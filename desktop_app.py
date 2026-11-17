@@ -75,7 +75,7 @@ class Settings(QDialog):
  def save(self):
   self._apply_temporary()
   with open(os.path.join(data_dir(),".env"),"w",encoding="utf-8") as f:
-   for k in ["SHZ_LLM_PROVIDER","SHZ_LLM_BASE_URL","SHZ_LLM_API_KEY","GEMINI_API_KEY","OPENAI_API_KEY","SEMANTIC_SCHOLAR_API_KEY","VERTEX_AI_PROJECT","VERTEX_AI_LOCATION"]:
+   for k in ["SHZ_LLM_PROVIDER","SHZ_LLM_BASE_URL","SHZ_LLM_API_KEY","SHZ_LLM_MODEL","GEMINI_API_KEY","OPENAI_API_KEY","SEMANTIC_SCHOLAR_API_KEY","VERTEX_AI_PROJECT","VERTEX_AI_LOCATION"]:
     f.write(k+"="+os.environ.get(k,"").replace("\\n","") + "\\n")
   self.accept()
 class Window(QMainWindow):
