@@ -28,7 +28,7 @@ class Settings(QDialog):
   idx=self.provider.findData(current)
   if idx>=0:self.provider.setCurrentIndex(idx)
   form.addRow("ارائه‌دهنده مدل",self.provider)
-  self.endpoint=QLineEdit(os.environ.get("SHZ_LLM_BASE_URL",""))
+  self.endpoint=QLineEdit(os.environ.get("SHZ_LLM_BASE_URL","") if current=="openai-compatible" else "")
   form.addRow("نشانی API / Endpoint",self.endpoint)
   for k,n in [("GEMINI_API_KEY","Gemini API Key"),("OPENROUTER_API_KEY","OpenRouter API Key"),("GROQ_API_KEY","Groq API Key"),("CEREBRAS_API_KEY","Cerebras API Key"),("DEEPSEEK_API_KEY","DeepSeek API Key"),("TOGETHER_API_KEY","Together API Key"),("OPENAI_API_KEY","OpenAI API Key"),("SHZ_LLM_API_KEY","کلید سرویس سفارشی"),("SEMANTIC_SCHOLAR_API_KEY","Semantic Scholar API Key"),("VERTEX_AI_PROJECT","Vertex project"),("VERTEX_AI_LOCATION","Vertex location")]:
    e=QLineEdit(os.environ.get(k,""))
@@ -44,7 +44,8 @@ class Settings(QDialog):
   else:self.endpoint.setPlaceholderText("برای ارائه‌دهنده‌های آماده، خودکار تنظیم می‌شود")
  def _apply_temporary(self):
   os.environ["SHZ_LLM_PROVIDER"]=self.provider.currentData()
-  os.environ["SHZ_LLM_BASE_URL"]=self.endpoint.text().strip()
+  if self.provider.currentData()=="openai-compatible":os.environ["SHZ_LLM_BASE_URL"]=self.endpoint.text().strip()
+  else:os.environ.pop("SHZ_LLM_BASE_URL",None)
   for k,e in self.fields.items():
    if e.text().strip():os.environ[k]=e.text().strip()
    else:os.environ.pop(k,None)
