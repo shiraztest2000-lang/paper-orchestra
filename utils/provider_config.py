@@ -31,8 +31,10 @@ def get_provider() -> str:
 
 def get_base_url(provider: str | None = None) -> str | None:
     provider = (provider or get_provider()).strip().lower()
-    configured = os.getenv("SHZ_LLM_BASE_URL", "").strip()
-    return configured.rstrip("/") if configured else HOSTED_DEFAULTS.get(provider)
+    if provider == "openai-compatible":
+        configured = os.getenv("SHZ_LLM_BASE_URL", "").strip()
+        return configured.rstrip("/") if configured else None
+    return HOSTED_DEFAULTS.get(provider)
 
 
 def is_local_provider(provider: str | None = None) -> bool:
