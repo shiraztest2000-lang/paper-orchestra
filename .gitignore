@@ -5,3 +5,10 @@
 datasets/*
 paper_output*
 *.zip
+# Windows desktop packaging
+__pycache__/
+*.py[cod]
+build/
+dist/
+dist-installer/
+*.spec
