@@ -41,7 +41,8 @@ class Settings(QDialog):
  def provider_changed(self):
   provider=self.provider.currentData()
   if provider=="openai-compatible" and not self.endpoint.text().strip():self.endpoint.setPlaceholderText("https://api.example.com/v1")
-  else:self.endpoint.setPlaceholderText("برای ارائه‌دهنده‌های آماده، خودکار تنظیم می‌شود")
+  else:
+   self.endpoint.clear(); self.endpoint.setPlaceholderText("برای ارائه‌دهنده‌های آماده، خودکار تنظیم می‌شود")
  def _apply_temporary(self):
   os.environ["SHZ_LLM_PROVIDER"]=self.provider.currentData()
   if self.provider.currentData()=="openai-compatible":os.environ["SHZ_LLM_BASE_URL"]=self.endpoint.text().strip()
