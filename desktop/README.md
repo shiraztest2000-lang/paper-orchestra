@@ -2,6 +2,10 @@
 
 The Windows desktop application runs the original PaperOrchestra agents and CLI; it does not simulate the research pipeline.
 
+## Guided first-run setup
+
+On first launch, the Windows app opens a Persian step-by-step setup assistant. It guides the user through choosing a provider, opening the provider's official account/API-key page in the browser, creating and pasting an API key, selecting a model, testing the API connection, and saving settings. The wizard requires a successful connection test before it marks setup complete. It can be reopened at any time from the main window. The app never asks for the provider account password.
+
 ## Direct cloud AI — no SHZ server and no local models
 
 This Windows build connects directly from the desktop application to third-party AI providers. It does **not** require an SHZ-owned server, VPS, gateway, Ollama, LM Studio, or downloaded model weights. An internet connection is required.
@@ -32,7 +36,7 @@ Official provider information:
 
 ## Credentials and privacy
 
-Provider keys are stored in the current Windows user's `%APPDATA%/SHZ PaperOrchestra/.env`. Do not commit, upload, or share this file. Use provider-side spending/rate limits where available. The app does not include an SHZ central-gateway sign-in mode in this direct-cloud build.
+Provider keys are stored in the current Windows user's `%APPDATA%/SHZ PaperOrchestra/.env`. This is a local plaintext environment file in the current implementation; do not commit, upload, or share it. A future update should move secrets to Windows Credential Manager. Use provider-side spending/rate limits where available. The app does not include an SHZ central-gateway sign-in mode in this direct-cloud build.
 
 ## Literature discovery
 
