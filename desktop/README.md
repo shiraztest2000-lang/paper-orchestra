@@ -2,28 +2,41 @@
 
 The Windows desktop application runs the original PaperOrchestra agents and CLI; it does not simulate the research pipeline.
 
-## Cloud-only AI providers
+## Direct cloud AI — no SHZ server and no local models
 
-No AI model weights are downloaded or installed on the Windows PC. All language-model inference is performed over the internet.
+This Windows build connects directly from the desktop application to third-party AI providers. It does **not** require an SHZ-owned server, VPS, gateway, Ollama, LM Studio, or downloaded model weights. An internet connection is required.
 
-Two connection modes are available:
+Supported direct providers:
+- **Google Gemini API** (Google AI Studio; some models have a free quota).
+- **OpenRouter** (offers free model IDs, including `openrouter/free`).
+- **Groq**, **Cerebras**, **DeepSeek**, **Together**, and **OpenAI**.
+- A custom HTTPS endpoint implementing the OpenAI-compatible API.
 
-1. **SHZ Cloud (central gateway):** the server administrator operates the gateway and pays the upstream provider bill. The desktop client uses an SHZ account access token; the provider API key remains on the server.
-2. **Direct provider connection:** the user selects a cloud provider and enters their own provider API key. Supported OpenAI-compatible hosted providers include OpenAI, OpenRouter, DeepSeek, Groq, Together, and custom hosted endpoints. Gemini and Vertex AI remain supported through their existing integration.
+Most providers require the user to create an account and provide their own API key, even when the selected model or usage tier is free. The application does not contain a shared API key and does not silently bill the SHZ project owner. Free access is subject to provider model availability, rate limits, account eligibility, and terms; it is not unlimited or guaranteed.
 
-Local model endpoints (Ollama and LM Studio) are disabled in this Windows build. An internet connection is required.
+### Starting with a free option
 
-Use Settings → AI connection to select the provider, configure the cloud endpoint or direct provider key, test the connection, and discover compatible models. The SHZ Cloud endpoint should be the gateway's HTTPS base URL ending in `/v1`. The account token is not a provider API key.
+1. Create a free account with Google AI Studio or OpenRouter.
+2. Create an API key in that provider's dashboard.
+3. In the app, open **تنظیم اتصال هوش مصنوعی** and select Gemini or OpenRouter.
+4. Enter the matching API key and save.
+5. For OpenRouter, use a currently available free model ID (usually ending in `:free`) or try `openrouter/free`. Free model availability can change.
+6. Use **آزمایش اتصال** for OpenAI-compatible providers and **دریافت فهرست مدل‌ها** to populate the model list. Gemini model names can be entered manually in this build.
 
-Direct-provider credentials and the SHZ account token are stored in the current Windows user's `%APPDATA%/SHZ PaperOrchestra/.env`; do not commit or share this file. The gateway's provider credentials must be stored only in the server's environment, never in the desktop executable or repository.
+Official provider information:
+- Google Gemini API pricing and free tier: https://ai.google.dev/gemini-api/docs/pricing
+- Google AI Studio API key setup: https://aistudio.google.com/
+- OpenRouter free models: https://openrouter.ai/collections/free-models
+- OpenRouter pricing and free-plan limits: https://openrouter.ai/pricing
+- Cerebras pricing: https://inference-docs.cerebras.ai/support/pricing
 
-## Central gateway
+## Credentials and privacy
 
-The initial FastAPI/Docker gateway is in `cloud_gateway/`. See [cloud_gateway/README.md](../cloud_gateway/README.md) for deployment and its current limitations. The first version supports authenticated model discovery and non-streaming chat completions through one OpenAI-compatible upstream. It is not yet a full account-registration, billing, quota, or admin platform.
+Provider keys are stored in the current Windows user's `%APPDATA%/SHZ PaperOrchestra/.env`. Do not commit, upload, or share this file. Use provider-side spending/rate limits where available. The app does not include an SHZ central-gateway sign-in mode in this direct-cloud build.
 
 ## Literature discovery
 
-Candidate discovery uses OpenAlex and Crossref. Candidate records are subsequently enriched through the existing Semantic Scholar integration. Internet access is required for scholarly discovery and metadata enrichment.
+Candidate discovery uses OpenAlex and Crossref. Candidate records are subsequently enriched through the existing Semantic Scholar integration. Internet access is required for scholarly discovery and metadata enrichment. A Semantic Scholar API key may be needed for higher or sustained request volume.
 
 ## Run and build
 
@@ -37,4 +50,4 @@ Candidate discovery uses OpenAlex and Crossref. Candidate records are subsequent
 
 ## Compatibility note
 
-The central gateway currently proxies text chat completions and model discovery. Validate image/PDF workloads and optional vendor-specific upstream features before production use. Some upstream agents may still rely on provider-specific capabilities; cloud-only compatibility must be tested end-to-end for each selected model.
+The application uses Gemini's native integration and OpenAI-compatible chat completions for the other listed providers. Validate each selected model against the full research workflow before relying on it: structured JSON output, long-context handling, PDF/image input, and plotting-agent compatibility can vary by provider/model. The desktop connection test checks configuration/model discovery; it does not guarantee every agent capability.
