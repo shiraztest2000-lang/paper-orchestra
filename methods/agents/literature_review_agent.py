@@ -464,7 +464,7 @@ class HybridLiteratureAgent:
 
         user_prompt = "Generate the LaTeX for Introduction and Related Work sections."
         response_dict = call_llm_with_text_prompt(
-            prompt=user_prompt + "\\n\\n" + json.dumps(context_payload, ensure_ascii=False),
+            prompt=user_prompt + "\n\n" + json.dumps(context_payload, ensure_ascii=False),
             model_name=self.model_name,
             generation_configs={"system_instruction": writer_system_prompt},
             result_parsing_func=parse_gemini_latex_results,
