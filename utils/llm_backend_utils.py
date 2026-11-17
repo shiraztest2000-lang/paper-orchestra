@@ -30,6 +30,7 @@ from utils.openai_utils import (
     get_openai_image_part_from_path,
 )
 from utils.pdf_utils import load_paper
+from utils.provider_config import get_provider, is_openai_compatible
 
 
 def identity_parse(response: str):
@@ -40,11 +41,7 @@ def get_llm_parser(model_name: str, return_json: bool = True) -> Callable:
     if not return_json:
         return identity_parse
 
-    if (
-        "gpt" in model_name.lower()
-        or "o1" in model_name.lower()
-        or "o3" in model_name.lower()
-    ):
+    if is_openai_compatible(get_provider()):
         return parse_openai_json_results
     else:
         return parse_gemini_json_results
@@ -70,11 +67,7 @@ def call_llm_with_text_prompt(
     if generation_configs is None:
         generation_configs = {}
 
-    if (
-        "gpt" in model_name.lower()
-        or "o1" in model_name.lower()
-        or "o3" in model_name.lower()
-    ):
+    if is_openai_compatible(get_provider()):
         system_prompt = None
         configs_for_openai = dict(generation_configs) if generation_configs else {}
         if "system_instruction" in configs_for_openai:
@@ -123,11 +116,7 @@ def call_llm_with_images(
     if generation_configs is None:
         generation_configs = {}
 
-    if (
-        "gpt" in model_name.lower()
-        or "o1" in model_name.lower()
-        or "o3" in model_name.lower()
-    ):
+    if is_openai_compatible(get_provider()):
         system_prompt = None
         # Copy to avoid side-effects on caller's dictionary
         configs_for_openai = dict(generation_configs) if generation_configs else {}
@@ -181,11 +170,7 @@ def call_llm_with_pdf(
         else get_llm_parser(model_name, return_json)
     )
 
-    if (
-        "gpt" in model_name.lower()
-        or "o1" in model_name.lower()
-        or "o3" in model_name.lower()
-    ):
+    if is_openai_compatible(get_provider()):
         paper_text = load_paper(pdf_path, min_size=100)
         full_prompt = f"Paper Content:\n{paper_text}\n\nTask:\n{prompt}"
 
