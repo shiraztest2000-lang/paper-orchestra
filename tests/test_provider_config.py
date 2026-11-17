@@ -36,6 +36,11 @@ class ProviderConfigTests(unittest.TestCase):
             self.assertFalse(valid)
             self.assertIn("کلید API حساب خودتان", message)
 
+    def test_custom_key_is_not_reused_for_another_hosted_provider(self):
+        env = {"SHZ_LLM_PROVIDER": "groq", "SHZ_LLM_API_KEY": "custom-key"}
+        with patch.dict(os.environ, env, clear=True):
+            self.assertIsNone(__import__("utils.provider_config", fromlist=["get_api_key"]).get_api_key())
+
     def test_hosted_provider_defaults(self):
         env = {"SHZ_LLM_PROVIDER": "cerebras", "CEREBRAS_API_KEY": "test-token"}
         with patch.dict(os.environ, env, clear=True):
