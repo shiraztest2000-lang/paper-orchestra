@@ -80,7 +80,7 @@ class Window(QMainWindow):
   if self.plot.isChecked():args+=["--use_plotting","true","--plotting_model_name",self.model.currentText()]
   pe=QProcessEnvironment.systemEnvironment()
   for k,val in os.environ.items():pe.insert(k,val)
-  pe.insert("SHZ_PAPERORCHESTRA_LOG",self.log_path); self.proc=QProcess(self); self.proc.setProgram(sys.executable); self.proc.setArguments(args); self.proc.setWorkingDirectory(root_dir()); self.proc.setProcessEnvironment(pe); self.proc.finished.connect(self.finished); self.proc.start()
+  pe.insert("SHZ_PAPERORCHESTRA_LOG",self.log_path); self.proc=QProcess(self); self.proc.setProgram(sys.executable);\n  if not getattr(sys,"frozen",False): args.insert(0,os.path.abspath(__file__))\n  self.proc.setArguments(args); self.proc.setWorkingDirectory(root_dir()); self.proc.setProcessEnvironment(pe); self.proc.finished.connect(self.finished); self.proc.start()
   if not self.proc.waitForStarted(5000):QMessageBox.critical(self,"خطا","اجرای موتور ناموفق بود."); self.proc=None; return
   self.go.setEnabled(False); self.stop.setEnabled(True); self.timer.start(); self.status.setText("در حال اجرا…")
  def poll(self):
