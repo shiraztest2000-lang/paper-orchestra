@@ -20,13 +20,11 @@ import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Optional, Dict
 from pydantic import BaseModel
-from google.genai import types  # type: ignore
-
-from methods.prompts.literature_review_agent import (
-    literature_review_agent_writter_prompt,
-)
-from utils.gemini_utils import call_gemini_with_contents, parse_gemini_latex_results
+from methods.prompts.literature_review_agent import literature_review_agent_writter_prompt
+from utils.llm_backend_utils import call_llm_with_text_prompt
+from utils.gemini_utils import parse_gemini_latex_results
 from utils.scholar_utils import s2_title_search
+from utils.literature_search import search_academic_candidates
 
 
 class CandidatePaper(BaseModel):
@@ -84,7 +82,6 @@ class HybridLiteratureAgent:
             "conference_guidelines.md": conference_guidelines_path,
         }
         self.context_files = self._load_context_files()
-        self.google_search_tool = types.Tool(google_search=types.GoogleSearch())
 
         self.registry_lock = threading.Lock()
         self.print_lock = threading.Lock()
@@ -424,55 +421,25 @@ class HybridLiteratureAgent:
         return True
 
     def _discover_candidates(self, task, outline, cutoff_date) -> List[CandidatePaper]:
-        intro_plan = outline.get("intro_related_work_plan", {}).get(
-            "introduction_strategy", {}
+        # Retrieve candidate records directly from scholarly indexes. LLM choice is
+        # deliberately independent from literature search and Google credentials.
+        limit = 1 if task.get("search_type") == "targeted" else 15
+        results = search_academic_candidates(
+            query=task.get("focus", ""),
+            cutoff_date=cutoff_date,
+            limit=limit,
         )
-        core_problem = intro_plan.get("problem_gap_hypothesis", "N/A")
-
-        if task.get("search_type") == "targeted":
-            prompt = f"""
-            Identify the SPECIFIC academic paper described by this hint: "{task['focus']}".
-            
-            CONTEXT: {task['context']}
-            CUTOFF DATE: Published BEFORE {cutoff_date}
-            
-            INSTRUCTIONS:
-            1. Use Google Search to find the EXACT title and year of this paper.
-            2. If the hint refers to a dataset, model architecture, or baseline (e.g., "research paper introducing..."), you MUST find the primary, original paper that introduced it.
-            3. Return EXACTLY 1 candidate paper that matches best.
-
-            YOU MUST return the results in json format (```json content```) following this schema:
-            {DiscoveryResult.model_json_schema()}
-            """
-        else:
-            prompt = f"""
-            Find 10-15 highly relevant, influential academic papers matching the search task. Do not force results; only return strictly relevant papers.
-            
-            SEARCH TASK: {task['focus']}
-            CONTEXT FOR TASK: {task['context']}
-            BROADER PROJECT PROBLEM: {core_problem}
-            CUTOFF DATE: Published BEFORE {cutoff_date}
-            
-            INSTRUCTIONS:
-            1. Use Google Search to find REAL papers (ArXiv, CVPR, NeurIPS, ICML, ICLR, etc.).
-            2. Only return papers published in top-tier conferences or journals, or highly-cited works, or the exact state-of-the-art relevant to the task.
-
-            YOU MUST return the results in json format (```json content```) following this schema:
-            {DiscoveryResult.model_json_schema()}
-            """
-
-        response_dict = call_gemini_with_contents(
-            model_name="gemini-3-flash-preview",
-            contents=[prompt],
-            generation_configs={
-                "tools": [self.google_search_tool],
-                "temperature": 0.1 if task.get("search_type") == "targeted" else 0.4,
-            },
-        )
-
-        if response_dict["parsed_response"]:
-            return response_dict["parsed_response"].get("candidates", [])
-        return []
+        candidates = []
+        for item in results:
+            try:
+                candidates.append(CandidatePaper(
+                    title=item["title"],
+                    year=int(item["year"]),
+                    reason=item.get("reason", "Retrieved from scholarly index"),
+                ))
+            except (KeyError, TypeError, ValueError):
+                continue
+        return candidates
 
     def _synthesize_content(self, outline, papers: List[PaperData], cutoff_date: str):
         paper_keys = [p.citation_key for p in papers]
@@ -496,11 +463,12 @@ class HybridLiteratureAgent:
         )
 
         user_prompt = "Generate the LaTeX for Introduction and Related Work sections."
-        response_dict = call_gemini_with_contents(
+        response_dict = call_llm_with_text_prompt(
+            prompt=user_prompt + "\\n\\n" + json.dumps(context_payload, ensure_ascii=False),
             model_name=self.model_name,
-            contents=[user_prompt, json.dumps(context_payload)],
             generation_configs={"system_instruction": writer_system_prompt},
             result_parsing_func=parse_gemini_latex_results,
+            return_json=False,
         )
         return response_dict["parsed_response"]
 
