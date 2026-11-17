@@ -30,6 +30,22 @@ class ProviderConfigTests(unittest.TestCase):
         with patch.dict(os.environ, {"SHZ_LLM_PROVIDER": "gemini", "GEMINI_API_KEY": "test"}, clear=True):
             self.assertTrue(validate_provider_config()[0])
 
+    def test_gemini_model_discovery_uses_generate_content(self):
+        from unittest.mock import Mock, patch
+        from utils.provider_config import list_gemini_models
+        response = Mock()
+        response.json.return_value = {
+            "models": [
+                {"name": "models/gemini-2.5-flash", "supportedGenerationMethods": ["generateContent"]},
+                {"name": "models/embedding-001", "supportedGenerationMethods": ["embedContent"]},
+            ]
+        }
+        response.raise_for_status.return_value = None
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}, clear=True):
+            with patch("requests.get", return_value=response) as get:
+                self.assertEqual(list_gemini_models(), ["gemini-2.5-flash"])
+                self.assertEqual(get.call_args.kwargs["params"]["key"], "test-key")
+
     def test_openrouter_free_still_requires_user_key(self):
         with patch.dict(os.environ, {"SHZ_LLM_PROVIDER": "openrouter"}, clear=True):
             valid, message = validate_provider_config()
