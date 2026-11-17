@@ -23,34 +23,31 @@ def data_dir():
 class Settings(QDialog):
  def __init__(self,parent=None):
   super().__init__(parent); self.setWindowTitle("تنظیم اتصال ابری و کلیدهای API"); self.fields={}; form=QFormLayout()
-  self.provider=QComboBox(); self.provider.addItem("Gemini","gemini"); self.provider.addItem("OpenAI","openai"); self.provider.addItem("OpenRouter","openrouter"); self.provider.addItem("DeepSeek","deepseek"); self.provider.addItem("Groq","groq"); self.provider.addItem("Together","together"); self.provider.addItem("SHZ Cloud (سرور مرکزی، بدون کلید API شخصی)","shz-cloud"); self.provider.addItem("سازگار با OpenAI API","openai-compatible")
+  self.provider=QComboBox(); self.provider.addItem("Gemini (Google AI Studio)","gemini"); self.provider.addItem("OpenRouter (دارای مدل‌های رایگان)","openrouter"); self.provider.addItem("Groq","groq"); self.provider.addItem("Cerebras","cerebras"); self.provider.addItem("DeepSeek","deepseek"); self.provider.addItem("Together","together"); self.provider.addItem("OpenAI","openai"); self.provider.addItem("سرویس ابری سفارشی (OpenAI-compatible)","openai-compatible")
   current=os.environ.get("SHZ_LLM_PROVIDER","gemini")
   idx=self.provider.findData(current)
   if idx>=0:self.provider.setCurrentIndex(idx)
   form.addRow("ارائه‌دهنده مدل",self.provider)
-  defaults={"shz-cloud":os.environ.get("SHZ_CLOUD_BASE_URL","")}
-  self.endpoint=QLineEdit(os.environ.get("SHZ_LLM_BASE_URL",defaults.get(current,"")))
+  self.endpoint=QLineEdit(os.environ.get("SHZ_LLM_BASE_URL",""))
   form.addRow("نشانی API / Endpoint",self.endpoint)
-  for k,n in [("SHZ_LLM_API_KEY","کلید سرویس انتخاب‌شده"),("SHZ_CLOUD_ACCESS_TOKEN","توکن حساب SHZ Cloud"),("GEMINI_API_KEY","Gemini API Key"),("OPENAI_API_KEY","OpenAI API Key"),("SEMANTIC_SCHOLAR_API_KEY","Semantic Scholar API Key"),("VERTEX_AI_PROJECT","Vertex project"),("VERTEX_AI_LOCATION","Vertex location")]:
+  for k,n in [("GEMINI_API_KEY","Gemini API Key"),("OPENROUTER_API_KEY","OpenRouter API Key"),("GROQ_API_KEY","Groq API Key"),("CEREBRAS_API_KEY","Cerebras API Key"),("DEEPSEEK_API_KEY","DeepSeek API Key"),("TOGETHER_API_KEY","Together API Key"),("OPENAI_API_KEY","OpenAI API Key"),("SHZ_LLM_API_KEY","کلید سرویس سفارشی"),("SEMANTIC_SCHOLAR_API_KEY","Semantic Scholar API Key"),("VERTEX_AI_PROJECT","Vertex project"),("VERTEX_AI_LOCATION","Vertex location")]:
    e=QLineEdit(os.environ.get(k,""))
    if "KEY" in k:e.setEchoMode(QLineEdit.EchoMode.Password)
    self.fields[k]=e; form.addRow(n,e)
   self.provider.currentIndexChanged.connect(self.provider_changed)
   actions=QHBoxLayout(); test=QPushButton("آزمایش اتصال"); test.clicked.connect(self.test_connection); models=QPushButton("دریافت فهرست مدل‌ها"); models.clicked.connect(self.load_models); actions.addWidget(test); actions.addWidget(models)
   b=QDialogButtonBox(QDialogButtonBox.StandardButton.Save|QDialogButtonBox.StandardButton.Cancel); b.accepted.connect(self.save); b.rejected.connect(self.reject)
-  l=QVBoxLayout(self); l.addLayout(form); l.addLayout(actions); l.addWidget(QLabel("توکن SHZ Cloud برای ورود به سرور مرکزی است؛ کلید اصلی ارائه‌دهنده فقط روی سرور نگهداری می‌شود. در حالت اتصال مستقیم، کلید سرویس‌دهنده در پروفایل محلی ویندوز ذخیره می‌شود.")); l.addWidget(b)
+  l=QVBoxLayout(self); l.addLayout(form); l.addLayout(actions); l.addWidget(QLabel("اتصال مستقیم به سرویس ابری انتخابی انجام می‌شود؛ هیچ سرور اختصاصی SHZ یا مدل محلی لازم نیست. سرویس‌های رایگان نیز معمولاً ثبت‌نام و API Key شخصی می‌خواهند. کلیدها در فایل تنظیمات پروفایل ویندوز ذخیره می‌شوند؛ این فایل را با دیگران به اشتراک نگذارید.")); l.addWidget(b)
  def provider_changed(self):
   provider=self.provider.currentData()
-  defaults={"shz-cloud":os.environ.get("SHZ_CLOUD_BASE_URL","")}
-  if provider in defaults and not self.endpoint.text().strip():self.endpoint.setText(defaults[provider])
+  if provider=="openai-compatible" and not self.endpoint.text().strip():self.endpoint.setPlaceholderText("https://api.example.com/v1")
+  else:self.endpoint.setPlaceholderText("برای ارائه‌دهنده‌های آماده، خودکار تنظیم می‌شود")
  def _apply_temporary(self):
   os.environ["SHZ_LLM_PROVIDER"]=self.provider.currentData()
   os.environ["SHZ_LLM_BASE_URL"]=self.endpoint.text().strip()
   for k,e in self.fields.items():
    if e.text().strip():os.environ[k]=e.text().strip()
    else:os.environ.pop(k,None)
-  if self.provider.currentData()=="shz-cloud":
-   os.environ["SHZ_CLOUD_BASE_URL"]=self.endpoint.text().strip()
  def test_connection(self):
   self._apply_temporary()
   from utils.provider_config import test_compatible_connection,validate_provider_config
@@ -77,7 +74,7 @@ class Settings(QDialog):
  def save(self):
   self._apply_temporary()
   with open(os.path.join(data_dir(),".env"),"w",encoding="utf-8") as f:
-   for k in ["SHZ_LLM_PROVIDER","SHZ_LLM_BASE_URL","SHZ_LLM_API_KEY","SHZ_CLOUD_BASE_URL","SHZ_CLOUD_ACCESS_TOKEN","SHZ_LLM_MODEL","GEMINI_API_KEY","OPENAI_API_KEY","SEMANTIC_SCHOLAR_API_KEY","VERTEX_AI_PROJECT","VERTEX_AI_LOCATION"]:
+   for k in ["SHZ_LLM_PROVIDER","SHZ_LLM_BASE_URL","SHZ_LLM_API_KEY","SHZ_LLM_MODEL","GEMINI_API_KEY","OPENROUTER_API_KEY","GROQ_API_KEY","CEREBRAS_API_KEY","DEEPSEEK_API_KEY","TOGETHER_API_KEY","OPENAI_API_KEY","SEMANTIC_SCHOLAR_API_KEY","VERTEX_AI_PROJECT","VERTEX_AI_LOCATION"]:
     f.write(k+"="+os.environ.get(k,"").replace("\\n","") + "\\n")
   self.accept()
 class Window(QMainWindow):
@@ -90,7 +87,7 @@ class Window(QMainWindow):
   h.addWidget(t); h.addStretch(); h.addWidget(QLabel("سامانه هوشمند پژوهش و نگارش مقاله")); v.addLayout(h)
   tabs=QTabWidget(); p=QWidget(); pv=QVBoxLayout(p); g=QGroupBox("مشخصات پروژه"); f=QGridLayout(g)
   self.name=QLineEdit("پژوهش جدید"); self.template=QComboBox(); self.template.addItems(self.templates())
-  self.model=QComboBox(); self.model.setEditable(True); self.model.addItems(["gemini-3.1-pro-preview","gemini-3-flash-preview","gpt-5"]); self.model.setCurrentText(os.environ.get("SHZ_LLM_MODEL","gemini-3.1-pro-preview"))
+  self.model=QComboBox(); self.model.setEditable(True); self.model.addItems(["gemini-2.5-flash","openrouter/free","nvidia/nemotron-3-super-120b-a12b:free","gpt-oss-120b"]); self.model.setCurrentText(os.environ.get("SHZ_LLM_MODEL","gemini-2.5-flash"))
   self.cutoff=QLineEdit(); self.cutoff.setPlaceholderText("2026-11"); self.plot=QCheckBox("فعال‌سازی عامل تولید شکل و نمودار"); self.plot.setChecked(True)
   for args in [(QLabel("نام پروژه"),0,0),(self.name,0,1),(QLabel("قالب"),0,2),(self.template,0,3),(QLabel("مدل"),1,0),(self.model,1,1),(QLabel("تاریخ قطع منابع"),1,2),(self.cutoff,1,3),(self.plot,2,1)]: f.addWidget(*args)
   pv.addWidget(g); row=QHBoxLayout(); a=QGroupBox("ایده پژوهش"); al=QVBoxLayout(a); self.idea=QPlainTextEdit(); self.idea.setPlaceholderText("ایده، مسئله، پرسش و نوآوری پژوهش…"); al.addWidget(self.idea)
