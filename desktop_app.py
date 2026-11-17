@@ -120,8 +120,7 @@ class Settings(QDialog):
  def _apply_temporary(self):
   provider=self.provider.currentData(); item=self.PROVIDERS[provider]
   os.environ["SHZ_LLM_PROVIDER"]=provider
-  for other in self.PROVIDERS.values():
-   if other["key"]!=item["key"]:os.environ.pop(other["key"],None)
+  # Keep credentials for other providers so users can switch without re-entering keys.
   os.environ[item["key"]]=self.api_key.text().strip()
   if provider=="openai-compatible":os.environ["SHZ_LLM_BASE_URL"]=self.endpoint.text().strip()
   else:os.environ.pop("SHZ_LLM_BASE_URL",None)
@@ -179,7 +178,7 @@ class Window(QMainWindow):
   for args in [(QLabel("نام پروژه"),0,0),(self.name,0,1),(QLabel("قالب"),0,2),(self.template,0,3),(QLabel("مدل"),1,0),(self.model,1,1),(QLabel("تاریخ قطع منابع"),1,2),(self.cutoff,1,3),(self.plot,2,1)]: f.addWidget(*args)
   pv.addWidget(g); row=QHBoxLayout(); a=QGroupBox("ایده پژوهش"); al=QVBoxLayout(a); self.idea=QPlainTextEdit(); self.idea.setPlaceholderText("ایده، مسئله، پرسش و نوآوری پژوهش…"); al.addWidget(self.idea)
   b=QGroupBox("گزارش آزمایش"); bl=QVBoxLayout(b); self.notes=QPlainTextEdit(); self.notes.setPlaceholderText("روش، داده‌ها، نتایج و مشاهدات…"); bl.addWidget(self.notes); row.addWidget(a); row.addWidget(b); pv.addLayout(row,1)
-  buttons=QHBoxLayout(); s=QPushButton("تنظیم اتصال هوش مصنوعی"); s.clicked.connect(lambda:Settings(self).exec())
+  buttons=QHBoxLayout(); s=QPushButton("راهنمای گام‌به‌گام اتصال هوش مصنوعی"); s.clicked.connect(self.open_setup_wizard)
   self.go=QPushButton("شروع تولید مقاله"); self.go.clicked.connect(self.start); self.stop=QPushButton("توقف"); self.stop.setEnabled(False); self.stop.clicked.connect(self.cancel)
   buttons.addWidget(s); buttons.addStretch(); buttons.addWidget(self.stop); buttons.addWidget(self.go); pv.addLayout(buttons); tabs.addTab(p,"پروژه جدید")
   q=QWidget(); qv=QVBoxLayout(q); self.status=QLabel("آماده"); self.bar=QProgressBar(); self.bar.setRange(0,5); self.output=QPlainTextEdit(); self.output.setReadOnly(True)
@@ -187,6 +186,14 @@ class Window(QMainWindow):
   qv.addWidget(self.status); qv.addWidget(self.bar); qv.addWidget(self.output,1); qv.addWidget(self.open); tabs.addTab(q,"گزارش اجرا"); v.addWidget(tabs); self.setCentralWidget(w); self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
   self.setStyleSheet("QMainWindow,QWidget{background:#f4f6fa;color:#172033;font-size:10pt} QLineEdit,QPlainTextEdit,QComboBox{background:white;border:1px solid #ccd4e0;border-radius:6px;padding:6px} QGroupBox{border:1px solid #ccd4e0;border-radius:8px;margin-top:10px;padding:10px} QPushButton{padding:9px;background:#e4eaf3;border-radius:6px}")
   self.timer=QTimer(self); self.timer.setInterval(700); self.timer.timeout.connect(self.poll)
+  from utils.provider_config import validate_provider_config
+  provider=os.environ.get("SHZ_LLM_PROVIDER","gemini")
+  ready,_=validate_provider_config(provider)
+  if not ready:QTimer.singleShot(350,self.open_setup_wizard)
+ def open_setup_wizard(self):
+  dialog=Settings(self)
+  dialog.exec()
+  self.model.setCurrentText(os.environ.get("SHZ_LLM_MODEL",self.model.currentText()))
  def templates(self):
   p=os.path.join(root_dir(),"templates")
   return sorted(x for x in os.listdir(p) if os.path.isfile(os.path.join(p,x,"template.tex"))) if os.path.isdir(p) else ["cvpr2025","iclr2025"]
