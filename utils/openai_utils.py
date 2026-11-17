@@ -42,10 +42,19 @@ def get_openai_client() -> OpenAI:
     if _openai_client is None:
         with _openai_client_lock:
             if _openai_client is None:
-                openai_api_key = os.environ.get("OPENAI_API_KEY")
+                from utils.provider_config import get_api_key, get_base_url, get_provider, is_openai_compatible
+
+                provider = get_provider()
+                if not is_openai_compatible(provider):
+                    raise ValueError(f"Provider '{provider}' is not OpenAI-compatible.")
+                openai_api_key = get_api_key(provider)
                 if not openai_api_key:
-                    raise ValueError("OPENAI_API_KEY must be set to use OpenAI models.")
-                _openai_client = OpenAI(api_key=openai_api_key)
+                    raise ValueError(f"An API key is required for provider '{provider}'.")
+                client_options = {"api_key": openai_api_key}
+                base_url = get_base_url(provider)
+                if base_url:
+                    client_options["base_url"] = base_url
+                _openai_client = OpenAI(**client_options)
     return _openai_client
 
 
