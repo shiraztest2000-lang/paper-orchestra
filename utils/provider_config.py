@@ -58,7 +58,7 @@ def get_api_key(provider: str | None = None) -> str | None:
     key_name = names.get(provider)
     if provider == "openai-compatible":
         return os.getenv("SHZ_LLM_API_KEY") or os.getenv("OPENAI_API_KEY") or None
-    return (os.getenv(key_name) or os.getenv("SHZ_LLM_API_KEY")) if key_name else None
+    return os.getenv(key_name) or None if key_name else None
 
 
 def validate_provider_config(provider: str | None = None) -> tuple[bool, str]:
