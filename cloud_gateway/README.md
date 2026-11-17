@@ -1,7 +1,9 @@
 # SHZ PaperOrchestra Cloud Gateway (initial server component)
 
-This service is the central-cloud option for the Windows desktop client. The
-client sends an SHZ account access token; provider API keys stay on the server.
+**Legacy/optional component — not used by the current Windows desktop build.**
+The desktop application now connects directly to third-party cloud providers.
+This folder is retained for a possible future self-hosted gateway deployment;
+no SHZ server is required or contacted by the current app.
 
 ## Current scope
 
@@ -37,7 +39,11 @@ The compose file binds the service to localhost intentionally. Configure TLS
 termination and firewall rules on the host. Use a dedicated low-privilege
 provider key and configure spending limits with the provider.
 
-## Desktop connection contract
+## Legacy desktop connection contract
+
+The current desktop UI does not expose this gateway provider. The contract below is retained only for reference and is not an active connection mode.
+
+
 
 - Base URL: `https://YOUR-HOST/v1`
 - Provider: `shz-cloud`
