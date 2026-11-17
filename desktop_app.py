@@ -15,69 +15,154 @@ def worker():
   if stream is not sys.stdout: stream.close()
 if __name__=="__main__" and len(sys.argv)>1 and sys.argv[1]=="--worker": raise SystemExit(worker())
 from PySide6.QtCore import QProcess,QTimer,Qt,QProcessEnvironment
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QDesktopServices
+from PySide6.QtCore import QUrl
 from PySide6.QtWidgets import *
 APP="SHZ PaperOrchestra"
 def data_dir():
  p=os.path.join(os.environ.get("APPDATA",os.path.expanduser("~")),APP); os.makedirs(p,exist_ok=True); return p
 class Settings(QDialog):
+ PROVIDERS={
+  "gemini":{"name":"Google Gemini","url":"https://aistudio.google.com/app/apikey","key":"GEMINI_API_KEY","free":"Google AI Studio برای برخی مدل‌ها سهمیه رایگان دارد. سهمیه و دسترسی به کشور و شرایط حساب وابسته است."},
+  "openrouter":{"name":"OpenRouter","url":"https://openrouter.ai/keys","key":"OPENROUTER_API_KEY","free":"OpenRouter مدل‌های رایگان دارد؛ دسترسی، صف و محدودیت هر مدل ممکن است تغییر کند."},
+  "groq":{"name":"Groq","url":"https://console.groq.com/keys","key":"GROQ_API_KEY","free":"Groq ممکن است برای حساب‌های واجد شرایط سهمیه رایگان محدود ارائه کند."},
+  "cerebras":{"name":"Cerebras","url":"https://cloud.cerebras.ai/platform","key":"CEREBRAS_API_KEY","free":"شرایط دسترسی و سهمیه رایگان را در پنل رسمی Cerebras بررسی کنید."},
+  "deepseek":{"name":"DeepSeek","url":"https://platform.deepseek.com/api_keys","key":"DEEPSEEK_API_KEY","free":"قبل از استفاده، قیمت و اعتبار حساب را در پنل رسمی بررسی کنید؛ رایگان بودن تضمین‌شده نیست."},
+  "together":{"name":"Together AI","url":"https://api.together.ai/settings/api-keys","key":"TOGETHER_API_KEY","free":"اعتبار آزمایشی یا سهمیه رایگان ممکن است به شرایط حساب وابسته باشد."},
+  "openai":{"name":"OpenAI","url":"https://platform.openai.com/api-keys","key":"OPENAI_API_KEY","free":"استفاده از API معمولاً هزینه دارد و اشتراک ChatGPT به‌معنی اعتبار API نیست."},
+  "openai-compatible":{"name":"سرویس ابری سفارشی","url":"","key":"SHZ_LLM_API_KEY","free":"نشانی HTTPS و کلید را فقط از ارائه‌دهنده سرویس خود دریافت کنید."},
+ }
+ DEFAULT_MODELS={"gemini":"gemini-2.5-flash","openrouter":"openrouter/free","groq":"","cerebras":"","deepseek":"","together":"","openai":"","openai-compatible":""}
  def __init__(self,parent=None):
-  super().__init__(parent); self.setWindowTitle("تنظیم اتصال ابری و کلیدهای API"); self.fields={}; form=QFormLayout()
-  self.provider=QComboBox(); self.provider.addItem("Gemini (Google AI Studio)","gemini"); self.provider.addItem("OpenRouter (دارای مدل‌های رایگان)","openrouter"); self.provider.addItem("Groq","groq"); self.provider.addItem("Cerebras","cerebras"); self.provider.addItem("DeepSeek","deepseek"); self.provider.addItem("Together","together"); self.provider.addItem("OpenAI","openai"); self.provider.addItem("سرویس ابری سفارشی (OpenAI-compatible)","openai-compatible")
-  current=os.environ.get("SHZ_LLM_PROVIDER","gemini")
-  idx=self.provider.findData(current)
+  super().__init__(parent); self.setWindowTitle("راهنمای راه‌اندازی اتصال هوش مصنوعی"); self.resize(650,500); self.step=0; self.tested=False; self.discovered=[]
+  self.stack=QStackedWidget(); root=QVBoxLayout(self)
+  self.heading=QLabel(); self.heading.setStyleSheet("font-size:18px;font-weight:bold;color:#214b91")
+  self.progress=QLabel(); self.progress.setStyleSheet("color:#53647d")
+  root.addWidget(self.heading); root.addWidget(self.progress); root.addWidget(self.stack,1)
+  # Step 1: choose a provider.
+  page=QWidget(); lay=QVBoxLayout(page)
+  lay.addWidget(QLabel("برای اتصال مستقیم، یک سرویس ابری انتخاب کنید. هیچ مدل یا سرور محلی نصب نمی‌شود و برنامه به سرور اختصاصی SHZ متصل نخواهد شد."))
+  self.provider=QComboBox()
+  for key,item in self.PROVIDERS.items(): self.provider.addItem(item["name"],key)
+  current=os.environ.get("SHZ_LLM_PROVIDER","gemini"); idx=self.provider.findData(current)
   if idx>=0:self.provider.setCurrentIndex(idx)
-  form.addRow("ارائه‌دهنده مدل",self.provider)
-  self.endpoint=QLineEdit(os.environ.get("SHZ_LLM_BASE_URL","") if current=="openai-compatible" else "")
-  form.addRow("نشانی API / Endpoint",self.endpoint)
-  for k,n in [("GEMINI_API_KEY","Gemini API Key"),("OPENROUTER_API_KEY","OpenRouter API Key"),("GROQ_API_KEY","Groq API Key"),("CEREBRAS_API_KEY","Cerebras API Key"),("DEEPSEEK_API_KEY","DeepSeek API Key"),("TOGETHER_API_KEY","Together API Key"),("OPENAI_API_KEY","OpenAI API Key"),("SHZ_LLM_API_KEY","کلید سرویس سفارشی"),("SEMANTIC_SCHOLAR_API_KEY","Semantic Scholar API Key"),("VERTEX_AI_PROJECT","Vertex project"),("VERTEX_AI_LOCATION","Vertex location")]:
-   e=QLineEdit(os.environ.get(k,""))
-   if "KEY" in k:e.setEchoMode(QLineEdit.EchoMode.Password)
-   self.fields[k]=e; form.addRow(n,e)
+  lay.addWidget(QLabel("مرحله ۱ ـ انتخاب سرویس‌دهنده")); lay.addWidget(self.provider)
+  lay.addWidget(QLabel("پیشنهاد برای شروع رایگان: ابتدا Gemini یا OpenRouter را بررسی کنید. رایگان بودن سهمیه به معنی بی‌نیازی از ثبت‌نام یا کلید API نیست."))
+  self.stack.addWidget(page)
+  # Step 2: account registration.
+  page=QWidget(); lay=QVBoxLayout(page)
+  lay.addWidget(QLabel("مرحله ۲ ـ ساخت حساب و دریافت کلید"))
+  self.account_info=QLabel(); self.account_info.setWordWrap(True); lay.addWidget(self.account_info)
+  self.open_account=QPushButton("باز کردن صفحه رسمی ثبت‌نام / دریافت کلید در مرورگر")
+  self.open_account.clicked.connect(self.open_provider_page); lay.addWidget(self.open_account)
+  lay.addWidget(QLabel("در صفحه رسمی سرویس‌دهنده وارد حساب شوید، بخش API Keys را باز کنید و یک کلید جدید بسازید. سپس به این برنامه برگردید. رمز حساب یا اطلاعات ورودتان را در برنامه وارد نکنید."))
+  lay.addStretch(); self.stack.addWidget(page)
+  # Step 3: enter key and model.
+  page=QWidget(); lay=QFormLayout(page)
+  self.key_label=QLabel("کلید API"); self.api_key=QLineEdit(); self.api_key.setEchoMode(QLineEdit.EchoMode.Password); self.api_key.setPlaceholderText("کلید را اینجا وارد کنید")
+  self.reveal=QCheckBox("نمایش کلید"); self.reveal.toggled.connect(lambda on:self.api_key.setEchoMode(QLineEdit.EchoMode.Normal if on else QLineEdit.EchoMode.Password))
+  keybox=QVBoxLayout(); keybox.addWidget(self.api_key); keybox.addWidget(self.reveal)
+  keywrap=QWidget(); keywrap.setLayout(keybox); lay.addRow(self.key_label,keywrap)
+  self.endpoint=QLineEdit(); self.endpoint.setPlaceholderText("https://api.example.com/v1"); lay.addRow("نشانی API سفارشی",self.endpoint)
+  self.endpoint_label=QLabel("فقط برای سرویس سفارشی لازم است."); lay.addRow("",self.endpoint_label)
+  self.model=QComboBox(); self.model.setEditable(True); self.model.addItems(["gemini-2.5-flash","openrouter/free"]); lay.addRow("مدل هوش مصنوعی",self.model)
+  lay.addRow("",QLabel("نام مدل را می‌توانید دستی وارد کنید. برای ارائه‌دهنده‌های سازگار، در مرحله بعد فهرست مدل‌ها دریافت می‌شود."))
+  self.stack.addWidget(page)
+  # Step 4: verify and save.
+  page=QWidget(); lay=QVBoxLayout(page)
+  lay.addWidget(QLabel("مرحله ۴ ـ آزمایش اتصال و ثبت تنظیمات"))
+  lay.addWidget(QLabel("برنامه کلید را با API رسمی سرویس‌دهنده آزمایش می‌کند. در صورت موفقیت، مدل‌های در دسترس نمایش داده می‌شوند و سپس می‌توانید تنظیمات را ذخیره کنید."))
+  self.test_result=QLabel("هنوز اتصالی آزمایش نشده است."); self.test_result.setWordWrap(True); lay.addWidget(self.test_result)
+  self.test_button=QPushButton("آزمایش اتصال و دریافت مدل‌ها"); self.test_button.clicked.connect(self.test_connection); lay.addWidget(self.test_button)
+  lay.addStretch(); self.stack.addWidget(page)
+  nav=QHBoxLayout(); self.back=QPushButton("مرحله قبل"); self.next=QPushButton("مرحله بعد"); self.finish=QPushButton("ذخیره تنظیمات و پایان"); self.cancel=QPushButton("لغو")
+  self.back.clicked.connect(self.previous_step); self.next.clicked.connect(self.next_step); self.finish.clicked.connect(self.save); self.cancel.clicked.connect(self.reject)
+  nav.addWidget(self.back); nav.addStretch(); nav.addWidget(self.cancel); nav.addWidget(self.next); nav.addWidget(self.finish); root.addLayout(nav)
   self.provider.currentIndexChanged.connect(self.provider_changed)
-  actions=QHBoxLayout(); test=QPushButton("آزمایش اتصال"); test.clicked.connect(self.test_connection); models=QPushButton("دریافت فهرست مدل‌ها"); models.clicked.connect(self.load_models); actions.addWidget(test); actions.addWidget(models)
-  b=QDialogButtonBox(QDialogButtonBox.StandardButton.Save|QDialogButtonBox.StandardButton.Cancel); b.accepted.connect(self.save); b.rejected.connect(self.reject)
-  l=QVBoxLayout(self); l.addLayout(form); l.addLayout(actions); l.addWidget(QLabel("اتصال مستقیم به سرویس ابری انتخابی انجام می‌شود؛ هیچ سرور اختصاصی SHZ یا مدل محلی لازم نیست. سرویس‌های رایگان نیز معمولاً ثبت‌نام و API Key شخصی می‌خواهند. کلیدها در فایل تنظیمات پروفایل ویندوز ذخیره می‌شوند؛ این فایل را با دیگران به اشتراک نگذارید.")); l.addWidget(b)
+  self.api_key.textChanged.connect(self.invalidate_test); self.endpoint.textChanged.connect(self.invalidate_test); self.model.currentTextChanged.connect(self.invalidate_test)
+  self._load_current(); self.provider_changed(); self.show_step(0)
+ def _load_current(self):
+  provider=self.provider.currentData(); item=self.PROVIDERS.get(provider,self.PROVIDERS["gemini"])
+  self.api_key.setText(os.environ.get(item["key"],""))
+  self.endpoint.setText(os.environ.get("SHZ_LLM_BASE_URL","") if provider=="openai-compatible" else "")
+  self.model.setCurrentText(os.environ.get("SHZ_LLM_MODEL",self.DEFAULT_MODELS.get(provider,"")))
  def provider_changed(self):
-  provider=self.provider.currentData()
-  if provider=="openai-compatible" and not self.endpoint.text().strip():self.endpoint.setPlaceholderText("https://api.example.com/v1")
-  else:
-   self.endpoint.clear(); self.endpoint.setPlaceholderText("برای ارائه‌دهنده‌های آماده، خودکار تنظیم می‌شود")
+  provider=self.provider.currentData(); item=self.PROVIDERS[provider]
+  self.account_info.setText(f"سرویس انتخاب‌شده: {item['name']}\n\n{item['free']}\n\n۱) صفحه رسمی را باز کنید. ۲) حساب بسازید یا وارد شوید. ۳) از بخش API Keys کلید بسازید. ۴) کلید را کپی و در مرحله بعد وارد کنید.\n\nبرنامه رمز عبور حساب شما را نمی‌خواهد.")
+  self.open_account.setVisible(bool(item["url"]))
+  self.key_label.setText("کلید API حساب " + item["name"])
+  custom=provider=="openai-compatible"; self.endpoint.setVisible(custom); self.endpoint_label.setVisible(custom)
+  self.tested=False; self.test_result.setText("برای این سرویس هنوز اتصال آزمایش نشده است.")
+  self.model.clear(); self.model.addItems([self.DEFAULT_MODELS.get(provider,"")])
+  self._load_current(); self.update_buttons()
+ def open_provider_page(self):
+  url=self.PROVIDERS[self.provider.currentData()]["url"]
+  if url:QDesktopServices.openUrl(QUrl(url))
+ def show_step(self,n):
+  self.step=n; self.stack.setCurrentIndex(n)
+  names=["انتخاب سرویس‌دهنده","ثبت‌نام و دریافت کلید","وارد کردن کلید و مدل","آزمایش و ذخیره"]
+  self.heading.setText(names[n]); self.progress.setText(f"گام {n+1} از ۴")
+  self.update_buttons()
+ def update_buttons(self):
+  self.back.setEnabled(self.step>0); self.next.setVisible(self.step<3); self.finish.setVisible(self.step==3); self.finish.setEnabled(self.step==3 and self.tested)
+ def invalidate_test(self,*args):
+  self.tested=False
+  if self.step==3:self.test_result.setText("اطلاعات اتصال تغییر کرده است؛ دوباره آزمایش کنید.")
+  self.update_buttons()
+ def next_step(self):
+  if self.step==2:
+   provider=self.provider.currentData()
+   if not self.api_key.text().strip():QMessageBox.warning(self,"کلید API لازم است","طبق راهنمای مرحله ۲ کلید API را دریافت و در این قسمت وارد کنید."); return
+   if provider=="openai-compatible" and not self.endpoint.text().strip():QMessageBox.warning(self,"نشانی سرویس لازم است","نشانی HTTPS سرویس سفارشی را وارد کنید."); return
+  if self.step<3:self.show_step(self.step+1)
+ def previous_step(self):
+  if self.step>0:self.show_step(self.step-1)
  def _apply_temporary(self):
-  os.environ["SHZ_LLM_PROVIDER"]=self.provider.currentData()
-  if self.provider.currentData()=="openai-compatible":os.environ["SHZ_LLM_BASE_URL"]=self.endpoint.text().strip()
+  provider=self.provider.currentData(); item=self.PROVIDERS[provider]
+  os.environ["SHZ_LLM_PROVIDER"]=provider
+  for other in self.PROVIDERS.values():
+   if other["key"]!=item["key"]:os.environ.pop(other["key"],None)
+  os.environ[item["key"]]=self.api_key.text().strip()
+  if provider=="openai-compatible":os.environ["SHZ_LLM_BASE_URL"]=self.endpoint.text().strip()
   else:os.environ.pop("SHZ_LLM_BASE_URL",None)
-  for k,e in self.fields.items():
-   if e.text().strip():os.environ[k]=e.text().strip()
-   else:os.environ.pop(k,None)
+  os.environ["SHZ_LLM_MODEL"]=self.model.currentText().strip()
  def test_connection(self):
-  self._apply_temporary()
-  from utils.provider_config import test_compatible_connection,validate_provider_config
+  self._apply_temporary(); self.test_button.setEnabled(False); self.test_result.setText("در حال ارتباط با سرویس‌دهنده…"); QApplication.processEvents()
   provider=self.provider.currentData()
-  if provider=="gemini":
-   ok,msg=validate_provider_config(provider)
-  else:
-   ok,msg=test_compatible_connection(provider)
-  QMessageBox.information(self,"نتیجه آزمایش",msg) if ok else QMessageBox.warning(self,"آزمایش اتصال",msg)
- def load_models(self):
-  self._apply_temporary()
-  from utils.provider_config import list_compatible_models
-  provider=self.provider.currentData()
-  if provider=="gemini":
-   QMessageBox.information(self,"فهرست مدل‌ها","دریافت خودکار فهرست Gemini در این مرحله فعال نیست؛ نام مدل را می‌توانید دستی وارد کنید."); return
   try:
-   models=list_compatible_models(provider)
-   if not models:raise RuntimeError("سرویس‌دهنده هیچ مدلی برنگرداند.")
-   parent=self.parent()
-   if parent and hasattr(parent,"model"):
-    parent.model.clear(); parent.model.addItems(models)
-   QMessageBox.information(self,"مدل‌ها",f"{len(models)} مدل دریافت شد.")
-  except Exception as exc:QMessageBox.warning(self,"دریافت مدل‌ها",str(exc))
+   if provider=="gemini":
+    from utils.provider_config import test_gemini_connection
+    ok,msg,models=test_gemini_connection()
+   else:
+    from utils.provider_config import list_compatible_models
+    models=list_compatible_models(provider); ok=bool(models)
+    msg=f"اتصال موفق بود؛ {len(models)} مدل از سرویس‌دهنده دریافت شد." if ok else "اتصال برقرار شد اما فهرست مدلی دریافت نشد."
+   if ok:
+    self.discovered=models
+    current=self.model.currentText().strip()
+    self.model.clear(); self.model.addItems(models)
+    if current:self.model.setCurrentText(current)
+    elif self.DEFAULT_MODELS.get(provider):self.model.setCurrentText(self.DEFAULT_MODELS[provider])
+    elif models:self.model.setCurrentIndex(0)
+    if not self.model.currentText().strip():ok=False; msg+=" نام مدل را وارد کنید."
+   self.tested=ok; self.test_result.setText(("✓ " if ok else "✕ ")+msg)
+   self.test_result.setStyleSheet("color:#18733b;font-weight:bold" if ok else "color:#a12b2b")
+  except Exception as exc:
+   self.tested=False; self.test_result.setText("✕ اتصال ناموفق بود.\n"+str(exc)); self.test_result.setStyleSheet("color:#a12b2b")
+  finally:self.test_button.setEnabled(True); self.update_buttons()
  def save(self):
+  if not self.tested:
+   QMessageBox.warning(self,"آزمایش لازم است","قبل از ذخیره، اتصال را با موفقیت آزمایش کنید."); return
   self._apply_temporary()
-  with open(os.path.join(data_dir(),".env"),"w",encoding="utf-8") as f:
-   for k in ["SHZ_LLM_PROVIDER","SHZ_LLM_BASE_URL","SHZ_LLM_API_KEY","SHZ_LLM_MODEL","GEMINI_API_KEY","OPENROUTER_API_KEY","GROQ_API_KEY","CEREBRAS_API_KEY","DEEPSEEK_API_KEY","TOGETHER_API_KEY","OPENAI_API_KEY","SEMANTIC_SCHOLAR_API_KEY","VERTEX_AI_PROJECT","VERTEX_AI_LOCATION"]:
-    f.write(k+"="+os.environ.get(k,"").replace("\\n","") + "\\n")
+  keys=["SHZ_LLM_PROVIDER","SHZ_LLM_BASE_URL","SHZ_LLM_API_KEY","SHZ_LLM_MODEL","GEMINI_API_KEY","OPENROUTER_API_KEY","GROQ_API_KEY","CEREBRAS_API_KEY","DEEPSEEK_API_KEY","TOGETHER_API_KEY","OPENAI_API_KEY","SEMANTIC_SCHOLAR_API_KEY","VERTEX_AI_PROJECT","VERTEX_AI_LOCATION"]
+  path=os.path.join(data_dir(),".env")
+  with open(path,"w",encoding="utf-8") as f:
+   for key in keys:
+    value=os.environ.get(key,"").replace("\\r","").replace("\\n","")
+    f.write(key+"="+value+"\n")
+  parent=self.parent()
+  if parent and hasattr(parent,"model"):parent.model.setCurrentText(os.environ.get("SHZ_LLM_MODEL",""))
+  QMessageBox.information(self,"راه‌اندازی کامل شد","تنظیمات ذخیره شد و اتصال API تأیید شد. از این پس می‌توانید پروژه پژوهشی خود را شروع کنید.")
   self.accept()
 class Window(QMainWindow):
  def __init__(self):
