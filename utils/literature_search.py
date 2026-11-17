@@ -20,7 +20,7 @@ def _cutoff_year(cutoff_date: str | None) -> int | None:
         return None
 
 def _clean_title(value: str) -> str:
-    return re.sub(r"\\s+", " ", (value or "")).strip()
+    return re.sub(r"\s+", " ", (value or "")).strip()
 
 def search_academic_candidates(query: str, cutoff_date: str | None = None, limit: int = 15) -> list[dict]:
     query = (query or "").strip()
