@@ -12,3 +12,6 @@ build/
 dist/
 dist-installer/
 *.spec
+
+# SHZ Cloud Gateway secrets
+cloud_gateway/.env
