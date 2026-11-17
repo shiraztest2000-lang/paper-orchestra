@@ -103,3 +103,18 @@ If you find this repo or our paper helpful, please cite it as follows:
 # Disclaimer
 
 This is not an officially supported Google product.
+
+
+## SHZ PaperOrchestra Windows Desktop
+
+This fork adds a Persian-language Windows desktop shell while retaining the original PaperOrchestra Python agents and CLI. The desktop application invokes the upstream pipeline rather than substituting mock agent outputs.
+
+### Development
+- Windows 10/11 x64 and Python 3.11
+- Install: `pip install -r requirements.txt -r desktop/requirements.txt`
+- Launch from the repository root: `python desktop_app.py`
+- Configure Gemini/Vertex credentials for the literature-review search workflow. If an OpenAI model is selected, an OpenAI API key is also required.
+- Projects are saved under Documents/SHZ PaperOrchestra/Projects; API credentials are stored locally in the Windows user profile.
+
+### Windows installer
+The `Windows Desktop Build` workflow builds a Windows x64 installer. Open the Actions tab and select the workflow artifact after a successful run. A TeX distribution may need to be installed separately for PDF compilation. The upstream research dataset is not bundled.
