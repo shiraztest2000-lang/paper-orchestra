@@ -155,7 +155,12 @@ class Settings(QDialog):
   if not self.tested:
    QMessageBox.warning(self,"آزمایش لازم است","قبل از ذخیره، اتصال را با موفقیت آزمایش کنید."); return
   self._apply_temporary()
-  keys=["SHZ_LLM_PROVIDER","SHZ_LLM_BASE_URL","SHZ_LLM_API_KEY","SHZ_LLM_MODEL","GEMINI_API_KEY","OPENROUTER_API_KEY","GROQ_API_KEY","CEREBRAS_API_KEY","DEEPSEEK_API_KEY","TOGETHER_API_KEY","OPENAI_API_KEY","SEMANTIC_SCHOLAR_API_KEY","VERTEX_AI_PROJECT","VERTEX_AI_LOCATION"]
+  from utils.secure_store import SECRET_ENV_KEYS, save_secure_secrets
+  try:
+   save_secure_secrets({key:os.environ.get(key,"") for key in SECRET_ENV_KEYS})
+  except Exception as exc:
+   QMessageBox.critical(self,"ذخیره امن ناموفق", "کلید API ذخیره نشد. برای امنیت، فایل متنی جایگزین ساخته نمی‌شود.\\n"+str(exc)); return
+  keys=["SHZ_LLM_PROVIDER","SHZ_LLM_BASE_URL","SHZ_LLM_MODEL","VERTEX_AI_PROJECT","VERTEX_AI_LOCATION"]
   path=os.path.join(data_dir(),".env")
   with open(path,"w",encoding="utf-8") as f:
    for key in keys:
@@ -169,8 +174,14 @@ class Window(QMainWindow):
  def __init__(self):
   super().__init__(); self.setWindowTitle(APP); self.resize(1080,760); self.proc=None; self.log_path=None; self.offset=0
   ep=os.path.join(data_dir(),".env")
-  if os.path.isfile(ep):
-   from dotenv import load_dotenv; load_dotenv(ep,override=True)
+  from utils.secure_store import migrate_legacy_env, load_secure_secrets
+  try:
+   migrate_legacy_env(ep)
+   if os.path.isfile(ep):
+    from dotenv import load_dotenv; load_dotenv(ep,override=True)
+   os.environ.update(load_secure_secrets())
+  except Exception as exc:
+   QMessageBox.warning(self,"ذخیره امن کلیدها", "خواندن مخزن امن ویندوز ناموفق بود. کلیدها بارگذاری نشدند.\\n"+str(exc))
   w=QWidget(); v=QVBoxLayout(w); h=QHBoxLayout(); t=QLabel(APP); t.setStyleSheet("font-size:22px;font-weight:bold;color:#214b91")
   h.addWidget(t); h.addStretch(); h.addWidget(QLabel("سامانه هوشمند پژوهش و نگارش مقاله")); v.addLayout(h)
   tabs=QTabWidget(); p=QWidget(); pv=QVBoxLayout(p); g=QGroupBox("مشخصات پروژه"); f=QGridLayout(g)
