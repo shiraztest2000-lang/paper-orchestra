@@ -5,6 +5,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 LOCAL_DEFAULTS = {"ollama": "http://127.0.0.1:11434/v1", "lmstudio": "http://127.0.0.1:1234/v1"}
+HOSTED_DEFAULTS = {"openrouter": "https://openrouter.ai/api/v1", "deepseek": "https://api.deepseek.com", "groq": "https://api.groq.com/openai/v1", "together": "https://api.together.xyz/v1", "openai": "https://api.openai.com/v1"}
 OPENAI_COMPATIBLE_PROVIDERS = {"openai", "openai-compatible", "openrouter", "deepseek", "groq", "together", "ollama", "lmstudio", "vllm"}
 
 def get_provider() -> str:
@@ -14,7 +15,7 @@ def get_provider() -> str:
 def get_base_url(provider: str | None = None) -> str | None:
     provider = (provider or get_provider()).strip().lower()
     configured = os.getenv("SHZ_LLM_BASE_URL", "").strip()
-    return configured.rstrip("/") if configured else LOCAL_DEFAULTS.get(provider)
+    return configured.rstrip("/") if configured else LOCAL_DEFAULTS.get(provider) or HOSTED_DEFAULTS.get(provider)
 
 def is_local_provider(provider: str | None = None) -> bool:
     return (provider or get_provider()).strip().lower() in {"ollama", "lmstudio"}
