@@ -22,19 +22,61 @@ def data_dir():
  p=os.path.join(os.environ.get("APPDATA",os.path.expanduser("~")),APP); os.makedirs(p,exist_ok=True); return p
 class Settings(QDialog):
  def __init__(self,parent=None):
-  super().__init__(parent); self.setWindowTitle("تنظیم کلیدهای API"); self.fields={}; form=QFormLayout()
-  for k,n in [("GEMINI_API_KEY","Gemini"),("OPENAI_API_KEY","OpenAI"),("SEMANTIC_SCHOLAR_API_KEY","Semantic Scholar"),("VERTEX_AI_PROJECT","Vertex project"),("VERTEX_AI_LOCATION","Vertex location")]:
+  super().__init__(parent); self.setWindowTitle("تنظیم ارائه‌دهنده و کلیدهای API"); self.fields={}; form=QFormLayout()
+  self.provider=QComboBox(); self.provider.addItem("Gemini","gemini"); self.provider.addItem("OpenAI","openai"); self.provider.addItem("OpenRouter","openrouter"); self.provider.addItem("DeepSeek","deepseek"); self.provider.addItem("Groq","groq"); self.provider.addItem("Together","together"); self.provider.addItem("Ollama (محلی، بدون کلید)","ollama"); self.provider.addItem("LM Studio (محلی، بدون کلید)","lmstudio"); self.provider.addItem("سازگار با OpenAI API","openai-compatible")
+  current=os.environ.get("SHZ_LLM_PROVIDER","gemini")
+  idx=self.provider.findData(current)
+  if idx>=0:self.provider.setCurrentIndex(idx)
+  form.addRow("ارائه‌دهنده مدل",self.provider)
+  defaults={"ollama":"http://127.0.0.1:11434/v1","lmstudio":"http://127.0.0.1:1234/v1"}
+  self.endpoint=QLineEdit(os.environ.get("SHZ_LLM_BASE_URL",defaults.get(current,"")))
+  form.addRow("نشانی API / Endpoint",self.endpoint)
+  for k,n in [("SHZ_LLM_API_KEY","کلید سرویس انتخاب‌شده"),("GEMINI_API_KEY","Gemini API Key"),("OPENAI_API_KEY","OpenAI API Key"),("SEMANTIC_SCHOLAR_API_KEY","Semantic Scholar API Key"),("VERTEX_AI_PROJECT","Vertex project"),("VERTEX_AI_LOCATION","Vertex location")]:
    e=QLineEdit(os.environ.get(k,""))
    if "KEY" in k:e.setEchoMode(QLineEdit.EchoMode.Password)
    self.fields[k]=e; form.addRow(n,e)
+  self.provider.currentIndexChanged.connect(self.provider_changed)
+  actions=QHBoxLayout(); test=QPushButton("آزمایش اتصال"); test.clicked.connect(self.test_connection); models=QPushButton("دریافت فهرست مدل‌ها"); models.clicked.connect(self.load_models); actions.addWidget(test); actions.addWidget(models)
   b=QDialogButtonBox(QDialogButtonBox.StandardButton.Save|QDialogButtonBox.StandardButton.Cancel); b.accepted.connect(self.save); b.rejected.connect(self.reject)
-  l=QVBoxLayout(self); l.addLayout(form); l.addWidget(QLabel("کلیدها فقط در پروفایل محلی ویندوز ذخیره می‌شوند.")); l.addWidget(b)
+  l=QVBoxLayout(self); l.addLayout(form); l.addLayout(actions); l.addWidget(QLabel("کلیدها فقط در پروفایل محلی ویندوز ذخیره می‌شوند؛ برای Ollama و LM Studio کلید لازم نیست.")); l.addWidget(b)
+ def provider_changed(self):
+  provider=self.provider.currentData()
+  defaults={"ollama":"http://127.0.0.1:11434/v1","lmstudio":"http://127.0.0.1:1234/v1"}
+  if provider in defaults and not self.endpoint.text().strip():self.endpoint.setText(defaults[provider])
+ def _apply_temporary(self):
+  os.environ["SHZ_LLM_PROVIDER"]=self.provider.currentData()
+  os.environ["SHZ_LLM_BASE_URL"]=self.endpoint.text().strip()
+  for k,e in self.fields.items():
+   if e.text().strip():os.environ[k]=e.text().strip()
+   else:os.environ.pop(k,None)
+ def test_connection(self):
+  self._apply_temporary()
+  from utils.provider_config import test_compatible_connection,validate_provider_config
+  provider=self.provider.currentData()
+  if provider=="gemini":
+   ok,msg=validate_provider_config(provider)
+  else:
+   ok,msg=test_compatible_connection(provider)
+  QMessageBox.information(self,"نتیجه آزمایش",msg) if ok else QMessageBox.warning(self,"آزمایش اتصال",msg)
+ def load_models(self):
+  self._apply_temporary()
+  from utils.provider_config import list_compatible_models
+  provider=self.provider.currentData()
+  if provider=="gemini":
+   QMessageBox.information(self,"فهرست مدل‌ها","دریافت خودکار فهرست Gemini در این مرحله فعال نیست؛ نام مدل را می‌توانید دستی وارد کنید."); return
+  try:
+   models=list_compatible_models(provider)
+   if not models:raise RuntimeError("سرویس‌دهنده هیچ مدلی برنگرداند.")
+   parent=self.parent()
+   if parent and hasattr(parent,"model"):
+    parent.model.clear(); parent.model.addItems(models)
+   QMessageBox.information(self,"مدل‌ها",f"{len(models)} مدل دریافت شد.")
+  except Exception as exc:QMessageBox.warning(self,"دریافت مدل‌ها",str(exc))
  def save(self):
+  self._apply_temporary()
   with open(os.path.join(data_dir(),".env"),"w",encoding="utf-8") as f:
-   for k,e in self.fields.items():
-    v=e.text().strip(); f.write(k+"="+v+"\n")
-    if v:os.environ[k]=v
-    else:os.environ.pop(k,None)
+   for k in ["SHZ_LLM_PROVIDER","SHZ_LLM_BASE_URL","SHZ_LLM_API_KEY","GEMINI_API_KEY","OPENAI_API_KEY","SEMANTIC_SCHOLAR_API_KEY","VERTEX_AI_PROJECT","VERTEX_AI_LOCATION"]:
+    f.write(k+"="+os.environ.get(k,"").replace("\\n","") + "\\n")
   self.accept()
 class Window(QMainWindow):
  def __init__(self):
@@ -46,7 +88,7 @@ class Window(QMainWindow):
   h.addWidget(t); h.addStretch(); h.addWidget(QLabel("سامانه هوشمند پژوهش و نگارش مقاله")); v.addLayout(h)
   tabs=QTabWidget(); p=QWidget(); pv=QVBoxLayout(p); g=QGroupBox("مشخصات پروژه"); f=QGridLayout(g)
   self.name=QLineEdit("پژوهش جدید"); self.template=QComboBox(); self.template.addItems(self.templates())
-  self.model=QComboBox(); self.model.setEditable(True); self.model.addItems(["gemini-3.1-pro-preview","gemini-3-flash-preview","gpt-5"])
+  self.model=QComboBox(); self.model.setEditable(True); self.model.addItems(["gemini-3.1-pro-preview","gemini-3-flash-preview","gpt-5"]); self.model.setCurrentText(os.environ.get("SHZ_LLM_MODEL","gemini-3.1-pro-preview"))
   self.cutoff=QLineEdit(); self.cutoff.setPlaceholderText("2026-11"); self.plot=QCheckBox("فعال‌سازی عامل تولید شکل و نمودار"); self.plot.setChecked(True)
   for args in [(QLabel("نام پروژه"),0,0),(self.name,0,1),(QLabel("قالب"),0,2),(self.template,0,3),(QLabel("مدل"),1,0),(self.model,1,1),(QLabel("تاریخ قطع منابع"),1,2),(self.cutoff,1,3),(self.plot,2,1)]: f.addWidget(*args)
   pv.addWidget(g); row=QHBoxLayout(); a=QGroupBox("ایده پژوهش"); al=QVBoxLayout(a); self.idea=QPlainTextEdit(); self.idea.setPlaceholderText("ایده، مسئله، پرسش و نوآوری پژوهش…"); al.addWidget(self.idea)
@@ -68,9 +110,13 @@ class Window(QMainWindow):
   ep=os.path.join(data_dir(),".env")
   if os.path.isfile(ep):
    from dotenv import load_dotenv; load_dotenv(ep,override=True)
-  if not (os.environ.get("GEMINI_API_KEY") or os.environ.get("VERTEX_AI_PROJECT")): QMessageBox.warning(self,"Gemini لازم است","عامل مرور منابع از ابزار جست‌وجوی Google استفاده می‌کند؛ کلید Gemini یا تنظیمات Vertex AI را وارد کنید."); return
-  model_name=self.model.currentText().strip().lower()
-  if any(tag in model_name for tag in ["gpt","o1","o3"]) and not os.environ.get("OPENAI_API_KEY"): QMessageBox.warning(self,"OpenAI لازم است","برای مدل انتخاب‌شده، OPENAI_API_KEY را نیز وارد کنید."); return
+  from utils.provider_config import validate_provider_config
+  provider=os.environ.get("SHZ_LLM_PROVIDER","gemini")
+  valid,message=validate_provider_config(provider)
+  if not valid: QMessageBox.warning(self,"تنظیمات ارائه‌دهنده",message); return
+  model_name=self.model.currentText().strip()
+  if not model_name: QMessageBox.warning(self,"مدل مشخص نشده","نام مدل را انتخاب یا وارد کنید."); return
+  os.environ["SHZ_LLM_MODEL"]=model_name
   from datetime import datetime
   safe="".join(c if c.isalnum() or c in "-_ " else "_" for c in self.name.text()).strip().replace(" ","_")
   base=os.path.join(os.path.expanduser("~"),"Documents",APP,"Projects"); os.makedirs(base,exist_ok=True)
