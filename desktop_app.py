@@ -41,7 +41,7 @@ class Settings(QDialog):
   l=QVBoxLayout(self); l.addLayout(form); l.addLayout(actions); l.addWidget(QLabel("توکن SHZ Cloud برای ورود به سرور مرکزی است؛ کلید اصلی ارائه‌دهنده فقط روی سرور نگهداری می‌شود. در حالت اتصال مستقیم، کلید سرویس‌دهنده در پروفایل محلی ویندوز ذخیره می‌شود.")); l.addWidget(b)
  def provider_changed(self):
   provider=self.provider.currentData()
-  defaults={"ollama":"http://127.0.0.1:11434/v1","lmstudio":"http://127.0.0.1:1234/v1"}
+  defaults={"shz-cloud":os.environ.get("SHZ_CLOUD_BASE_URL","")}
   if provider in defaults and not self.endpoint.text().strip():self.endpoint.setText(defaults[provider])
  def _apply_temporary(self):
   os.environ["SHZ_LLM_PROVIDER"]=self.provider.currentData()
@@ -49,6 +49,8 @@ class Settings(QDialog):
   for k,e in self.fields.items():
    if e.text().strip():os.environ[k]=e.text().strip()
    else:os.environ.pop(k,None)
+  if self.provider.currentData()=="shz-cloud":
+   os.environ["SHZ_CLOUD_BASE_URL"]=self.endpoint.text().strip()
  def test_connection(self):
   self._apply_temporary()
   from utils.provider_config import test_compatible_connection,validate_provider_config
