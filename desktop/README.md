@@ -36,7 +36,7 @@ Official provider information:
 
 ## Credentials and privacy
 
-Provider keys are stored in the current Windows user's `%APPDATA%/SHZ PaperOrchestra/.env`. This is a local plaintext environment file in the current implementation; do not commit, upload, or share it. A future update should move secrets to Windows Credential Manager. Use provider-side spending/rate limits where available. The app does not include an SHZ central-gateway sign-in mode in this direct-cloud build.
+Provider API keys are stored in the current Windows user's Windows Credential Manager through the OS credential store. Non-secret preferences remain in `%APPDATA%/SHZ PaperOrchestra/.env`. Existing API keys found in a legacy plaintext `.env` file are migrated into the credential store at startup and removed from that file after successful migration. If secure storage is unavailable, the app refuses to save credentials as plaintext. Use provider-side spending/rate limits where available. The app does not include an SHZ central-gateway sign-in mode in this direct-cloud build.
 
 ## Literature discovery
 
