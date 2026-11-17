@@ -43,6 +43,15 @@ class ProviderConfigTests(unittest.TestCase):
             self.assertEqual(get_base_url(), "https://api.cerebras.ai/v1")
             self.assertTrue(validate_provider_config()[0])
 
+    def test_builtin_provider_ignores_custom_endpoint_environment(self):
+        env = {
+            "SHZ_LLM_PROVIDER": "openrouter",
+            "SHZ_LLM_BASE_URL": "https://stale-custom.example.test/v1",
+            "OPENROUTER_API_KEY": "test-token",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            self.assertEqual(get_base_url(), "https://openrouter.ai/api/v1")
+
     def test_custom_cloud_compatible_endpoint(self):
         env = {
             "SHZ_LLM_PROVIDER": "openai-compatible",
