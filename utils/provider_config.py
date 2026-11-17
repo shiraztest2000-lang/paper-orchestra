@@ -115,3 +115,36 @@ def test_compatible_connection(provider: str | None = None, timeout: float = 15.
         return True, f"اتصال مستقیم ابری موفق بود؛ {len(models)} مدل شناسایی شد."
     except Exception as exc:
         return False, f"اتصال ابری ناموفق بود: {exc}"
+
+
+def list_gemini_models(timeout: float = 15.0) -> list[str]:
+    """Return Gemini models that expose generateContent for the configured API key."""
+    import requests
+
+    key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not key:
+        raise ValueError("ابتدا کلید Gemini را وارد کنید.")
+    response = requests.get(
+        "https://generativelanguage.googleapis.com/v1beta/models",
+        params={"key": key, "pageSize": 1000},
+        timeout=timeout,
+    )
+    response.raise_for_status()
+    payload = response.json()
+    models = []
+    for item in payload.get("models", []):
+        methods = item.get("supportedGenerationMethods", [])
+        name = str(item.get("name", ""))
+        if name.startswith("models/") and "generateContent" in methods:
+            models.append(name.removeprefix("models/"))
+    return sorted(set(models))
+
+
+def test_gemini_connection(timeout: float = 15.0) -> tuple[bool, str, list[str]]:
+    try:
+        models = list_gemini_models(timeout)
+        if not models:
+            return False, "کلید دریافت شد، اما مدلی با قابلیت تولید محتوا در حساب شما پیدا نشد.", []
+        return True, f"اتصال Gemini موفق بود؛ {len(models)} مدل قابل استفاده پیدا شد.", models
+    except Exception as exc:
+        return False, f"آزمایش اتصال Gemini ناموفق بود: {exc}", []
