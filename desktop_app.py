@@ -140,8 +140,10 @@ class Settings(QDialog):
     self.discovered=models
     current=self.model.currentText().strip()
     self.model.clear(); self.model.addItems(models)
-    if current:self.model.setCurrentText(current)
-    elif self.DEFAULT_MODELS.get(provider):self.model.setCurrentText(self.DEFAULT_MODELS[provider])
+    default=self.DEFAULT_MODELS.get(provider,"")
+    if current=="openrouter/free" and provider=="openrouter":self.model.setCurrentText(current)
+    elif current in models:self.model.setCurrentText(current)
+    elif default in models:self.model.setCurrentText(default)
     elif models:self.model.setCurrentIndex(0)
     if not self.model.currentText().strip():ok=False; msg+=" نام مدل را وارد کنید."
    self.tested=ok; self.test_result.setText(("✓ " if ok else "✕ ")+msg)
