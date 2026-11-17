@@ -36,6 +36,8 @@ def get_api_key(provider: str | None = None) -> str | None:
     provider = (provider or get_provider()).strip().lower()
     names = {"shz-cloud": "SHZ_CLOUD_ACCESS_TOKEN", "openai": "OPENAI_API_KEY", "openrouter": "OPENROUTER_API_KEY", "deepseek": "DEEPSEEK_API_KEY", "groq": "GROQ_API_KEY", "together": "TOGETHER_API_KEY"}
     key_name = names.get(provider)
+    if provider == "shz-cloud":
+        return os.getenv("SHZ_CLOUD_ACCESS_TOKEN") or None
     return os.getenv(key_name) or os.getenv("SHZ_LLM_API_KEY") or (os.getenv("OPENAI_API_KEY") if provider == "openai-compatible" else None)
 
 def validate_provider_config(provider: str | None = None) -> tuple[bool, str]:
