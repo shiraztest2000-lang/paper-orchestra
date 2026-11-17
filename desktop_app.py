@@ -68,7 +68,9 @@ class Window(QMainWindow):
   ep=os.path.join(data_dir(),".env")
   if os.path.isfile(ep):
    from dotenv import load_dotenv; load_dotenv(ep,override=True)
-  if not (os.environ.get("GEMINI_API_KEY") or os.environ.get("VERTEX_AI_PROJECT")): QMessageBox.warning(self,"Gemini لازم است","عامل مرور منابع از ابزار جست‌وجوی Google استفاده می‌کند؛ کلید Gemini یا تنظیمات Vertex AI را وارد کنید."); return\n  model_name=self.model.currentText().strip().lower()\n  if any(tag in model_name for tag in ["gpt","o1","o3"]) and not os.environ.get("OPENAI_API_KEY"): QMessageBox.warning(self,"OpenAI لازم است","برای مدل انتخاب‌شده، OPENAI_API_KEY را نیز وارد کنید."); return
+  if not (os.environ.get("GEMINI_API_KEY") or os.environ.get("VERTEX_AI_PROJECT")): QMessageBox.warning(self,"Gemini لازم است","عامل مرور منابع از ابزار جست‌وجوی Google استفاده می‌کند؛ کلید Gemini یا تنظیمات Vertex AI را وارد کنید."); return
+  model_name=self.model.currentText().strip().lower()
+  if any(tag in model_name for tag in ["gpt","o1","o3"]) and not os.environ.get("OPENAI_API_KEY"): QMessageBox.warning(self,"OpenAI لازم است","برای مدل انتخاب‌شده، OPENAI_API_KEY را نیز وارد کنید."); return
   from datetime import datetime
   safe="".join(c if c.isalnum() or c in "-_ " else "_" for c in self.name.text()).strip().replace(" ","_")
   base=os.path.join(os.path.expanduser("~"),"Documents",APP,"Projects"); os.makedirs(base,exist_ok=True)
