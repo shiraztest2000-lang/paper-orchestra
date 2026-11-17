@@ -4,6 +4,9 @@ on:
   push:
     branches: [shz-paperorchestra-windows]
     paths: [desktop_app.py, desktop/**, methods/**, utils/**, templates/**, paper_writing_cli.py, requirements.txt, .github/workflows/windows-desktop.yml]
+concurrency:
+  group: shz-paperorchestra-windows-build
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
@@ -20,6 +23,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -r desktop/requirements.txt
+      - name: Validate Python syntax
+        run: python -m compileall -q desktop_app.py paper_writing_cli.py methods utils autoraters
       - name: Build app
         shell: pwsh
         run: pyinstaller --noconfirm --clean --windowed --onedir --name SHZPaperOrchestra --collect-all google.genai --collect-all openai --collect-all matplotlib --collect-all cv2 --collect-all fitz --collect-submodules methods --collect-submodules utils --add-data "methods;methods" --add-data "utils;utils" --add-data "templates;templates" --add-data "autoraters;autoraters" --add-data "paper_writing_cli.py;." desktop_app.py
