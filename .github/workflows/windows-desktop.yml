@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [shz-paperorchestra-windows]
-    paths: [desktop_app.py, desktop/**, methods/**, utils/**, templates/**, paper_writing_cli.py, requirements.txt, .github/workflows/windows-desktop.yml]
+    paths: [desktop_app.py, desktop/**, methods/**, utils/**, templates/**, paper_writing_cli.py, requirements.txt, tests/**, .github/workflows/windows-desktop.yml]
 concurrency:
   group: shz-paperorchestra-windows-build
   cancel-in-progress: true
