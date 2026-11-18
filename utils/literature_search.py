@@ -47,7 +47,7 @@ def _add_candidate(found: dict, title: str, year, source: str,
         return
     if not title or year < 1500 or (cutoff_year and year > cutoff_year):
         return
-    key = re.sub(r"[^a-z0-9]+", "", title.casefold())
+    key = re.sub(r"[^\\w]+", "", title.casefold(), flags=re.UNICODE)
     if not key:
         return
     if key not in found:
