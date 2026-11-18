@@ -81,7 +81,7 @@ jobs:
           foreach ($release in ($releases | Where-Object {
             $_.draft -eq $true -and $_.tag_name -like "portable-preview-*" -and $_.tag_name -ne $tag
           })) {
-            gh release delete $release.tag_name --yes --cleanup-tag
+            gh release delete $release.tag_name --yes
             if ($LASTEXITCODE -ne 0) { throw "Could not remove previous draft release $($release.tag_name)." }
             Write-Host "Deleted previous draft preview $($release.tag_name)"
           }
