@@ -40,6 +40,9 @@ def get_genai_client() -> genai.Client:
     when a Gemini model is actually called (e.g. OpenAI-only setups don't need
     them). Vertex AI takes precedence over GEMINI_API_KEY when both are set.
     """
+    from utils.provider_config import is_free_mode
+    if is_free_mode():
+        raise ValueError("در حالت کاملاً رایگان، اتصال Gemini و هرگونه درخواست خارج از OpenRouter Free مسدود است.")
     global _genai_client
     if _genai_client is None:
         with _genai_client_lock:
