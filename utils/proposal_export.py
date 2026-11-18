@@ -170,25 +170,45 @@ def export_proposal_docx(data, output_path):
 
 
 def proposal_markdown(data):
-    lines = ["# " + (data.get("title_fa") or "پیش‌نویس پروپوزال"), "",
-             "**عنوان انگلیسی:** " + data.get("title_en", ""), ""]
+    lines = [
+        "# " + (data.get("title_fa") or "پیش‌نویس پروپوزال"), "",
+        "**عنوان انگلیسی:** " + data.get("title_en", ""), "",
+        "## مشخصات دانشجو و طرح", "",
+    ]
+    for label, key in [
+        ("نام دانشجو","student"),("شماره دانشجویی","student_number"),("مقطع","degree"),
+        ("رشته","field"),("گرایش","specialization"),("دانشکده","college"),
+        ("استاد راهنما","supervisor"),("استاد مشاور","advisor"),("تعداد واحد","credits")
+    ]:
+        lines.append(f"- {label}: {data.get(key,'')}")
     keys = [
-        ("problem_statement", "بیان مسئله"), ("significance", "اهمیت و ضرورت"),
-        ("literature_review", "مرور ادبیات و پیشینه"), ("novelty", "نوآوری"),
-        ("objectives", "اهداف"), ("beneficiaries", "بهره‌وران"),
-        ("research_questions", "سؤالات"), ("hypotheses", "فرضیه‌ها"),
-        ("definitions", "تعاریف تخصصی"), ("free_pajesh", "پایش آزاد"),
-        ("method_type", "نوع روش"), ("data_collection", "گردآوری اطلاعات"),
-        ("instruments", "ابزار"), ("analysis_method", "تحلیل اطلاعات"),
-        ("population_sample", "جامعه و نمونه"), ("inclusion_exclusion", "معیارهای ورود و خروج"),
+        ("main_question", "پرسش اصلی"), ("problem_statement", "بیان مسئله"),
+        ("significance", "اهمیت و ضرورت"), ("literature_review", "مرور ادبیات و پیشینه"),
+        ("novelty", "نوآوری"), ("keywords_fa", "کلیدواژه‌های فارسی"),
+        ("keywords_en", "کلیدواژه‌های انگلیسی"), ("objectives", "اهداف"),
+        ("beneficiaries", "بهره‌وران"), ("research_questions", "سؤالات"),
+        ("hypotheses", "فرضیه‌ها"), ("definitions", "تعاریف تخصصی"),
+        ("free_pajesh", "پایش آزاد"), ("method_type", "نوع روش"),
+        ("data_collection", "گردآوری اطلاعات"), ("instruments", "ابزار"),
+        ("analysis_method", "تحلیل اطلاعات"), ("population_sample", "جامعه و نمونه"),
+        ("inclusion_exclusion", "معیارهای ورود و خروج"),
         ("ethical_notes", "اخلاق پژوهش"), ("limitations", "محدودیت‌ها"),
     ]
     for key, label in keys:
-        lines.extend(["## " + label, "", data.get(key, "") or "نیازمند تکمیل", ""])
-    lines.extend(["## منابع", ""])
+        lines.extend(["", "## " + label, "", data.get(key, "") or "نیازمند تکمیل", ""])
+    lines.extend(["", "## جدول زمان‌بندی", "", "| مرحله | از ماه | تا ماه |", "|---|---:|---:|"])
+    for row in data.get("timeline", []):
+        if isinstance(row, dict):
+            lines.append(f"| {row.get('stage','')} | {row.get('start_month','')} | {row.get('end_month','')} |")
+    lines.extend(["", "## جدول متغیرها", "", "| متغیر | نقش | نوع | اندازه‌گیری | مقیاس |", "|---|---|---|---|---|"])
+    for row in data.get("variables", []):
+        if isinstance(row, dict):
+            lines.append("| " + " | ".join(str(row.get(key, "")) for key in ["name","role","type","measurement","scale"]) + " |")
+    lines.extend(["", "## هزینه‌ها", "", data.get("budget_note", ""), "", "## منابع", ""])
     for item in data.get("references", []):
         authors = ", ".join(item.get("authors") or [])
-        lines.append(f"- {authors} ({item.get('year','')}). {item.get('title','')}. {item.get('venue','')}. {item.get('doi','')} {item.get('url','')}")
+        lines.append(f"- [{item.get('id','')}] {authors} ({item.get('year','')}). {item.get('title','')}. {item.get('venue','')}. DOI: {item.get('doi','')}. {item.get('url','')}")
+    lines.extend(["", "## تذکر اداری", "", data.get("admin_note", "")])
     return "\n".join(lines)
 
 
