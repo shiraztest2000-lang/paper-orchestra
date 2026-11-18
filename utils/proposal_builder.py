@@ -1,6 +1,7 @@
 """Proposal drafting engine using public scholarly metadata and the configured LLM."""
 import json
 import os
+import re
 
 def _parse_json(raw):
     value = (raw or "").strip()
@@ -102,6 +103,15 @@ def generate_proposal(topic, metadata, cutoff_date=None, max_sources=20, progres
     ]
     result = {key: _text(payload.get(key)) for key in keys}
     result.update(metadata)
+    result["title_fa"] = result["title_fa"] or topic
+    result["main_question"] = result["main_question"] or (result["research_questions"].splitlines()[0] if result["research_questions"] else "")
+    # Prevent invalid citation numbers from masquerading as retrieved sources.
+    for key in ["problem_statement", "significance", "literature_review", "novelty", "objectives", "definitions"]:
+        result[key] = re.sub(
+            r"\[(\d+)\]",
+            lambda match: match.group(0) if 1 <= int(match.group(1)) <= len(sources) else "[ارجاع نیازمند راستی‌آزمایی]",
+            result[key],
+        )
     result["timeline"] = payload.get("timeline", [])
     result["variables"] = payload.get("variables", [])
     result["references"] = sources
