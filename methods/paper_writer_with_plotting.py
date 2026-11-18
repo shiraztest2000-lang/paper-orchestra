@@ -43,7 +43,7 @@ def write_single_paper(
     plotting_model_name: str = "gemini-3.1-pro-preview",
     image_model_name: str = "gemini-3-pro-image-preview",
     research_cutoff: str = "2024-11",
-    plotting_max_critic_rounds: int = 3,
+    plotting_max_critic_rounds: int = 1,
 ):
     latex_writeup_dir = osp.join(base_dir, "latex_writeup")
     pdf_file = osp.join(base_dir, "final_paper.pdf")
@@ -61,7 +61,7 @@ def write_single_paper(
     figures_dir = osp.join(latex_writeup_dir, "figures")
     os.makedirs(figures_dir, exist_ok=True)
 
-    max_n_tries = 3
+    max_n_tries = 1
     cur_try = 0
     succeed = False
 
@@ -233,7 +233,7 @@ def write_single_paper(
                 citation_map_path=citation_map_path,
                 guidelines_path=guidelines_path,
                 model_name=reflection_model_name,
-                max_reflections=3,
+                max_reflections=1,
                 work_dir=content_refinement_workdir,
             )
             content_refinment_agent_output_pdf_path = content_refinement_agent.run(
