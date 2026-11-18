@@ -98,57 +98,70 @@ def export_proposal_docx(data, output_path):
         ["تعداد واحد پایان‌نامه", data.get("credits", "")],
     ])
     sections = [
-        ("۱. اطلاعات مربوط به دانشجو و استادان", data.get("admin_note", "")),
-        ("۲. اطلاعات مربوط به پایان‌نامه", "نوع تحقیق: " + data.get("research_type", "") + "\nزبان: " + data.get("language", "فارسی") + "\nپرسش اصلی: " + data.get("main_question", "")),
-        ("۳. بیان مسئله تحقیق", data.get("problem_statement", "")),
-        ("۴. اهمیت و ضرورت انجام تحقیق", data.get("significance", "")),
-        ("۵. مرور ادبیات و سوابق مربوط", data.get("literature_review", "")),
-        ("۶. جنبه جدید بودن و نوآوری", data.get("novelty", "")),
-        ("۷. کلمات کلیدی فارسی", data.get("keywords_fa", "")),
-        ("۸. کلمات کلیدی انگلیسی", data.get("keywords_en", "")),
-        ("۹. اهداف مشخص تحقیق", data.get("objectives", "")),
-        ("۱۰. نام بهره‌وران", data.get("beneficiaries", "")),
-        ("۱۱. سؤال‌های تحقیق", data.get("research_questions", "")),
-        ("۱۲. فرضیه‌های تحقیق", data.get("hypotheses", "")),
-        ("۱۳. تعریف واژه‌ها و اصطلاحات تخصصی", data.get("definitions", "")),
-        ("۱۴. فهرست منابع و مآخذ", ""),
-        ("۱۵. پایش آزاد", data.get("free_pajesh", "")),
-        ("۱۶. روش‌شناسی تحقیق", "\n".join([
+        ("۱. اطلاعات مربوط به دانشجو", "مشخصات دانشجو طبق اطلاعات واردشده؛ موارد نامعلوم خالی است."),
+        ("۲. اطلاعات مربوط به استاد راهنما", "نام استاد راهنما: " + data.get("supervisor", "") + "\nسایر سوابق و مشخصات اداری استاد: نیازمند تکمیل توسط گروه آموزشی."),
+        ("۳. اطلاعات مربوط به استاد مشاور", "نام استاد مشاور: " + data.get("advisor", "") + "\nسایر مشخصات اداری استاد مشاور: نیازمند تکمیل توسط گروه آموزشی."),
+        ("۴. اطلاعات مربوط به پایان‌نامه", "عنوان فارسی: " + title + "\nعنوان انگلیسی: " + data.get("title_en", "") + "\nرشته: " + data.get("field", "") + "\nگرایش: " + data.get("specialization", "") + "\nمقطع: " + data.get("degree", "کارشناسی ارشد") + "\nنوع تحقیق: " + data.get("research_type", "") + "\nزبان: " + data.get("language", "فارسی") + "\nتعداد واحد: " + data.get("credits", "") + "\nپرسش اصلی: " + data.get("main_question", "")),
+        ("۵. بیان مسئله تحقیق", data.get("problem_statement", "")),
+        ("۶. اهمیت و ضرورت انجام تحقیق", data.get("significance", "")),
+        ("۷. مرور ادبیات و سوابق مربوط", data.get("literature_review", "")),
+        ("۸. جنبه جدید بودن و نوآوری", data.get("novelty", "")),
+        ("۹. کلمات کلیدی به فارسی", data.get("keywords_fa", "")),
+        ("۱۰. کلمات کلیدی به انگلیسی", data.get("keywords_en", "")),
+        ("۱۱. اهداف مشخص تحقیق", data.get("objectives", "")),
+        ("۱۲. نام بهره‌وران", data.get("beneficiaries", "")),
+        ("۱۳. سؤال‌های تحقیق", data.get("research_questions", "")),
+        ("۱۴. فرضیه‌های تحقیق", data.get("hypotheses", "")),
+        ("۱۵. تعریف واژه‌ها و اصطلاحات فنی و تخصصی", data.get("definitions", "")),
+        ("۱۶. فهرست منابع و مآخذ", ""),
+        ("۱۷. پایش آزاد", data.get("free_pajesh", "")),
+        ("۱۸. جدول زمان‌بندی", ""),
+        ("۱۹. روش‌شناسی تحقیق", "\n".join([
             "نوع روش تحقیق: " + data.get("method_type", ""),
             "روش گردآوری اطلاعات: " + data.get("data_collection", ""),
             "ابزار گردآوری اطلاعات: " + data.get("instruments", ""),
             "روش تجزیه و تحلیل: " + data.get("analysis_method", ""),
             "جامعه و نمونه: " + data.get("population_sample", ""),
             "معیارهای ورود و خروج: " + data.get("inclusion_exclusion", ""),
+            "ملاحظات اخلاقی: " + data.get("ethical_notes", ""),
+            "محدودیت‌ها: " + data.get("limitations", ""),
         ])),
-        ("۱۷. جدول زمان‌بندی", ""),
-        ("۱۸. جدول متغیرها", ""),
-        ("۱۹. هزینه‌های تحقیق پایان‌نامه", data.get("budget_note", "")),
-        ("۲۰. ملاحظات اخلاقی و محدودیت‌ها", data.get("ethical_notes", "") + "\n" + data.get("limitations", "")),
-        ("۲۱. تأیید طرح توسط استادان راهنما و مشاور", "نام و امضا و تاریخ: پس از بررسی حضوری تکمیل شود."),
-        ("۲۲. ضمایم و فرم‌های اداری", "فرم‌های تعهد، مشخصات تکمیلی استادان، کدها، امضاها و تأییدهای اداری باید از نسخه رسمی دانشگاه تکمیل شوند."),
+        ("۲۰. جدول متغیرها", ""),
+        ("۲۱. هزینه‌های تحقیق پایان‌نامه", data.get("budget_note", "")),
+        ("۲۲. تأیید طرح توسط استادان راهنما و مشاور", "نام، تاریخ و امضا: پس از بررسی حضوری تکمیل شود."),
+        ("۲۳. ضمایم", "فرم‌های تعهد دانشجو و استادان، اطلاعات تکمیلی، کدهای اداری و سایر پیوست‌ها باید از نسخه رسمی دانشگاه تکمیل شوند."),
     ]
     for heading, body in sections:
         _add_heading(doc, heading, 1)
         if body:
             _add_text(doc, body)
-        if heading.startswith("۱۴."):
-            refs = data.get("references", [])
+        if heading.startswith("۱."):
+            _add_table(doc, ["مشخصات دانشجو", "اطلاعات"], [
+                ["نام و نام خانوادگی", data.get("student", "")],
+                ["شماره دانشجویی", data.get("student_number", "")],
+                ["رشته و گرایش", (data.get("field", "") + " ـ " + data.get("specialization", "")).strip(" ـ")],
+                ["مقطع", data.get("degree", "کارشناسی ارشد")],
+                ["دانشکده", data.get("college", "")],
+            ])
+        if heading.startswith("۱۶."):
             rows = []
-            for item in refs:
-                authors = ", ".join(item.get("authors") or [])
-                rows.append([
-                    item.get("id", ""), authors, item.get("year", ""),
-                    item.get("title", ""), item.get("venue", ""),
-                    item.get("doi", ""), item.get("url", ""),
-                ])
-            _add_table(doc, ["ردیف", "نویسندگان", "سال", "عنوان", "نشریه/منبع", "DOI", "پیوند"], rows or [["", "", "", "منبعی ثبت نشده", "", "", ""]])
-        if heading.startswith("۱۷."):
-            rows = [[x.get("stage", ""), x.get("start_month", ""), x.get("end_month", "")] for x in data.get("timeline", []) if isinstance(x, dict)]
-            _add_table(doc, ["مرحله", "از ماه", "تا ماه"], rows or [["مطالعات کتابخانه‌ای", "۱", "۲"], ["جمع‌آوری اطلاعات", "۳", "۴"], ["تحلیل داده‌ها", "۵", "۶"], ["نگارش و دفاع", "۷", "۸"]])
+            for item in data.get("references", []):
+                rows.append([item.get("id", ""), ", ".join(item.get("authors") or []),
+                    item.get("year", ""), item.get("title", ""), item.get("venue", ""),
+                    item.get("doi", ""), item.get("url", "")])
+            _add_table(doc, ["ردیف", "نویسندگان", "سال", "عنوان", "نشریه/منبع", "DOI", "پیوند"],
+                rows or [["", "", "", "منبعی ثبت نشده", "", "", ""]])
         if heading.startswith("۱۸."):
-            rows = [[x.get(k, "") for k in ["name", "role", "type", "measurement", "scale"]] for x in data.get("variables", []) if isinstance(x, dict)]
-            _add_table(doc, ["عنوان متغیر", "نقش متغیر", "نوع متغیر", "نحوه اندازه‌گیری", "مقیاس"], rows or [["نیازمند تعیین بر اساس طرح نهایی", "", "", "", ""]])
+            rows = [[x.get("stage", ""), x.get("start_month", ""), x.get("end_month", "")]
+                for x in data.get("timeline", []) if isinstance(x, dict)]
+            _add_table(doc, ["مرحله", "از ماه", "تا ماه"],
+                rows or [["مطالعات کتابخانه‌ای", "۱", "۲"], ["جمع‌آوری اطلاعات", "۳", "۴"],
+                         ["تحلیل داده‌ها", "۵", "۶"], ["نگارش و دفاع", "۷", "۸"]])
+        if heading.startswith("۲۰."):
+            rows = [[x.get(k, "") for k in ["name", "role", "type", "measurement", "scale"]]
+                for x in data.get("variables", []) if isinstance(x, dict)]
+            _add_table(doc, ["عنوان متغیر", "نقش متغیر", "نوع متغیر", "نحوه اندازه‌گیری", "مقیاس"],
+                rows or [["نیازمند تعیین بر اساس طرح نهایی", "", "", "", ""]])
     _add_heading(doc, "تذکر مهم برای ثبت رسمی", 1)
     _add_text(doc, "این فایل پیش‌نویس کمکی است و جایگزین نسخه رسمی فرم دانشگاه نیست. مشخصات اداری، هزینه‌های واقعی، تأییدها و امضاها باید توسط دانشجو و واحد مربوط تکمیل شوند. همه منابع و روش پیشنهادی باید پیش از ثبت راستی‌آزمایی شوند.")
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
