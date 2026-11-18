@@ -96,6 +96,7 @@ def write_single_paper(
 
             ###############################################################################################
             # Step 1: Call outline agent
+            print("SHZ_PROGRESS:OUTLINE", flush=True)
             _t0 = time.time()
             outline_agent = OutlineAgent(
                 model_name=writer_model_name, cutoff_date=research_cutoff
@@ -115,6 +116,7 @@ def write_single_paper(
             literature_agent_output_dir = osp.join(base_dir, "literature_agent_output")
 
             def run_literature_agent():
+                print("SHZ_PROGRESS:LITERATURE", flush=True)
                 print("[DEBUG] Starting run_literature_agent")
                 literature_agent = HybridLiteratureAgent(
                     idea_path=idea_file_path,
@@ -133,6 +135,7 @@ def write_single_paper(
                 return True
 
             def run_plotting_agent():
+                print("SHZ_PROGRESS:PLOTTING", flush=True)
                 print("[DEBUG] Starting run_plotting_agent")
                 plotting_results_path = osp.join(base_dir, "plotting_results.json")
                 plotting_agent = PlottingAgent(
@@ -189,6 +192,7 @@ def write_single_paper(
 
             ###############################################################################################
             # Step 3. Call SectionWritingAgent
+            print("SHZ_PROGRESS:WRITING", flush=True)
             citation_map_path = osp.join(
                 literature_agent_output_dir, "citation_map.json"
             )
@@ -209,6 +213,7 @@ def write_single_paper(
 
             ###############################################################################################
             # Step 4: Content Reflection
+            print("SHZ_PROGRESS:REFINEMENT", flush=True)
             content_refinement_workdir = os.path.join(
                 base_dir, "content_refinement_workdir"
             )
