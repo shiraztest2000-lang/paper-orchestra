@@ -142,7 +142,7 @@ def main():
         from methods.paper_writer_with_plotting import write_single_paper
 
         print(f"🚀 Starting Paper Generation (WITH PLOTTING) in {base_dir}")
-        write_single_paper(
+        success = write_single_paper(
             base_dir=base_dir,
             latex_template_dir=args.latex_template_dir,
             idea_filename=args.idea_filename,
@@ -154,6 +154,9 @@ def main():
             research_cutoff=args.research_cutoff,
             plotting_max_critic_rounds=args.plotting_max_critic_rounds,
         )
+        if not success:
+            print("Paper generation failed. No successful final paper was produced.")
+            raise SystemExit(1)
     else:
         from methods.paper_writer import write_single_paper
 
@@ -161,7 +164,7 @@ def main():
         print(
             f"🚀 Starting Paper Generation (WITHOUT PLOTTING), with figures stored in {provided_figures_dir}"
         )
-        write_single_paper(
+        success = write_single_paper(
             base_dir=base_dir,
             latex_template_dir=args.latex_template_dir,
             idea_filename=args.idea_filename,
@@ -170,6 +173,9 @@ def main():
             reflection_model_name=args.reflection_model_name,
             research_cutoff=args.research_cutoff,
         )
+        if not success:
+            print("Paper generation failed. No successful final paper was produced.")
+            raise SystemExit(1)
 
 
 if __name__ == "__main__":
