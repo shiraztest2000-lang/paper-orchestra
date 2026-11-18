@@ -22,6 +22,12 @@ OPENAI_COMPATIBLE_PROVIDERS = {
 }
 LEGACY_LOCAL_PROVIDERS = {"ollama", "lmstudio", "lm-studio", "local-ollama"}
 DISABLED_GATEWAY_PROVIDERS = {"shz-cloud", "vllm-cloud"}
+FREE_MODE_PROVIDERS = {"openrouter"}
+FREE_MODELS = {"openrouter/free"}
+
+
+def is_free_mode() -> bool:
+    return os.getenv("SHZ_FREE_MODE", "").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def get_provider() -> str:
@@ -63,6 +69,12 @@ def get_api_key(provider: str | None = None) -> str | None:
 
 def validate_provider_config(provider: str | None = None) -> tuple[bool, str]:
     provider = (provider or get_provider()).strip().lower()
+    if is_free_mode():
+        if provider not in FREE_MODE_PROVIDERS:
+            return False, "حالت کاملاً رایگان فقط به OpenRouter Free متصل می‌شود؛ سرویس‌دهنده دیگری مجاز نیست."
+        model = os.getenv("SHZ_LLM_MODEL", "openrouter/free").strip()
+        if model not in FREE_MODELS and not model.endswith(":free"):
+            return False, "در حالت کاملاً رایگان فقط مدل‌های رایگان OpenRouter (openrouter/free یا شناسه‌های پایان‌یافته با :free) مجازند."
     if provider in LEGACY_LOCAL_PROVIDERS:
         return False, "مدل محلی غیرفعال است؛ یک سرویس ابری مستقیم انتخاب کنید."
     if provider in DISABLED_GATEWAY_PROVIDERS:
