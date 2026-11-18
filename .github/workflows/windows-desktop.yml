@@ -8,7 +8,8 @@ concurrency:
   group: shz-paperorchestra-windows-build
   cancel-in-progress: true
 permissions:
-  contents: read
+  contents: write
+  actions: write
 jobs:
   build:
     runs-on: windows-latest
@@ -36,9 +37,51 @@ jobs:
           }
           New-Item -ItemType Directory -Force -Path "dist-portable" | Out-Null
           Compress-Archive -Path "dist/SHZPaperOrchestra/*" -DestinationPath "dist-portable/SHZ-PaperOrchestra-Windows-x64-Portable.zip" -CompressionLevel Optimal
-      - uses: actions/upload-artifact@v7
+      - name: Upload portable build artifact
+        uses: actions/upload-artifact@v7
         with:
           name: SHZ-PaperOrchestra-Windows-x64-Portable
           path: dist-portable/SHZ-PaperOrchestra-Windows-x64-Portable.zip
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 7
+      - name: Publish private draft pre-release and clean previous previews
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $tag = "portable-preview-$env:GITHUB_RUN_NUMBER"
+          $zip = "dist-portable/SHZ-PaperOrchestra-Windows-x64-Portable.zip"
+          gh release create $tag $zip --draft --prerelease --title "SHZ PaperOrchestra Portable Preview #$env:GITHUB_RUN_NUMBER" --notes "آزمایشی و مخصوص بررسی؛ این نسخه Draft است و به‌صورت عمومی منتشر نشده است. پس از استخراج ZIP، فایل SHZPaperOrchestra.exe را اجرا کنید."
+          if ($LASTEXITCODE -ne 0) { throw "Draft pre-release creation failed." }
+
+          $headers = @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            Accept = "application/vnd.github+json"
+            "X-GitHub-Api-Version" = "2022-11-28"
+          }
+          $base = "https://api.github.com/repos/$env:GITHUB_REPOSITORY"
+          $page = 1
+          $oldArtifacts = @()
+          do {
+            $response = Invoke-RestMethod -Headers $headers -Uri "$base/actions/artifacts?per_page=100&page=$page"
+            $oldArtifacts += @($response.artifacts | Where-Object {
+              $_.name -eq "SHZ-PaperOrchestra-Windows-x64-Portable" -and
+              [string]$_.workflow_run.id -ne [string]$env:GITHUB_RUN_ID
+            })
+            $more = $response.artifacts.Count -eq 100
+            $page++
+          } while ($more)
+          foreach ($artifact in $oldArtifacts) {
+            Invoke-RestMethod -Method Delete -Headers $headers -Uri "$base/actions/artifacts/$($artifact.id)"
+            Write-Host "Deleted previous portable artifact $($artifact.id)"
+          }
+
+          $releases = Invoke-RestMethod -Headers $headers -Uri "$base/releases?per_page=100"
+          foreach ($release in ($releases | Where-Object {
+            $_.draft -eq $true -and $_.tag_name -like "portable-preview-*" -and $_.tag_name -ne $tag
+          })) {
+            gh release delete $release.tag_name --yes --cleanup-tag
+            if ($LASTEXITCODE -ne 0) { throw "Could not remove previous draft release $($release.tag_name)." }
+            Write-Host "Deleted previous draft preview $($release.tag_name)"
+          }
