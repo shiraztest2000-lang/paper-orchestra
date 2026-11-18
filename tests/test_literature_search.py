@@ -1,10 +1,16 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from utils.literature_search import search_academic_candidates
+from utils.literature_search import _add_candidate, search_academic_candidates
 
 
 class FreeLiteratureSearchTests(unittest.TestCase):
+    def test_persian_titles_are_kept(self):
+        found = {}
+        _add_candidate(found, "عنوان مقاله فارسی", 2025, "Crossref")
+        self.assertEqual(len(found), 1)
+        self.assertEqual(next(iter(found.values()))["title"], "عنوان مقاله فارسی")
+
     @patch("utils.literature_search.requests.get")
     def test_europe_pmc_and_crossref_merge_without_api_keys(self, get):
         europe = Mock()
