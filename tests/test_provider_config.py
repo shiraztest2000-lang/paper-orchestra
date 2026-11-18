@@ -111,7 +111,7 @@ class ProviderConfigTests(unittest.TestCase):
             self.assertEqual(get_base_url(), "https://api.example.test/v1")
 
     def test_scholarly_title_whitespace_is_normalized(self):
-        self.assertEqual(_clean_title("  A\\n\\t  useful   paper  "), "A useful paper")
+        self.assertEqual(_clean_title("  A\n\t  useful   paper  "), "A useful paper")
 
     def test_custom_remote_http_endpoint_is_rejected(self):
         env = {
