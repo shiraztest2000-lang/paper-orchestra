@@ -157,20 +157,37 @@ class Settings(QDialog):
    QMessageBox.warning(self,"آزمایش لازم است","قبل از ذخیره، اتصال را با موفقیت آزمایش کنید."); return
   self._apply_temporary()
   from utils.secure_store import SECRET_ENV_KEYS, save_secure_secrets
-  try:
-   save_secure_secrets({key:os.environ.get(key,"") for key in SECRET_ENV_KEYS})
-  except Exception as exc:
-   QMessageBox.critical(self,"ذخیره امن ناموفق", "کلید API ذخیره نشد. برای امنیت، فایل متنی جایگزین ساخته نمی‌شود.\\n"+str(exc)); return
   keys=["SHZ_LLM_PROVIDER","SHZ_LLM_BASE_URL","SHZ_LLM_MODEL","VERTEX_AI_PROJECT","VERTEX_AI_LOCATION"]
   path=os.path.join(data_dir(),".env")
-  with open(path,"w",encoding="utf-8") as f:
-   for key in keys:
-    value=os.environ.get(key,"").replace("\\r","").replace("\\n","")
-    f.write(key+"="+value+"\n")
+  temporary=path+".tmp"
+  try:
+   save_secure_secrets({key:os.environ.get(key,"") for key in SECRET_ENV_KEYS})
+   with open(temporary,"w",encoding="utf-8",newline="\n") as f:
+    for key in keys:
+     value=os.environ.get(key,"").replace("\r","").replace("\n","")
+     f.write(key+"="+value+"\n")
+    f.flush()
+    os.fsync(f.fileno())
+   os.replace(temporary,path)
+   with open(path,"r",encoding="utf-8") as f:
+    saved=f.read()
+   if "SHZ_LLM_PROVIDER="+os.environ.get("SHZ_LLM_PROVIDER","")+"\n" not in saved:
+    raise OSError("تنظیم سرویس‌دهنده پس از ذخیره‌سازی قابل تأیید نیست.")
+   if "SHZ_LLM_MODEL="+os.environ.get("SHZ_LLM_MODEL","")+"\n" not in saved:
+    raise OSError("تنظیم مدل پس از ذخیره‌سازی قابل تأیید نیست.")
+  except Exception as exc:
+   try:
+    if os.path.exists(temporary): os.remove(temporary)
+   except OSError: pass
+   QMessageBox.critical(self,"ذخیره تنظیمات ناموفق",
+    "تنظیمات کامل ذخیره نشد؛ پنجره باز می‌ماند.\nجزئیات: "+str(exc))
+   return
   parent=self.parent()
-  if parent and hasattr(parent,"model"):parent.model.setCurrentText(os.environ.get("SHZ_LLM_MODEL",""))
-  QMessageBox.information(self,"راه‌اندازی کامل شد","تنظیمات ذخیره شد و اتصال API تأیید شد. از این پس می‌توانید پروژه پژوهشی خود را شروع کنید.")
+  if parent and hasattr(parent,"model"): parent.model.setCurrentText(os.environ.get("SHZ_LLM_MODEL",""))
+  QMessageBox.information(self,"ذخیره موفق",
+   "تنظیمات و کلید API در محل امن ذخیره و تنظیمات اتصال بررسی شد.\nاکنون پنجره بسته می‌شود.")
   self.accept()
+
 class Window(QMainWindow):
  def __init__(self):
   super().__init__(); self.setWindowTitle(APP); self.resize(1080,760); self.proc=None; self.log_path=None; self.offset=0
@@ -188,9 +205,9 @@ class Window(QMainWindow):
   tabs=QTabWidget(); self.tabs=tabs; p=QWidget(); pv=QVBoxLayout(p); g=QGroupBox("مشخصات پروژه"); f=QGridLayout(g)
   self.name=QLineEdit("پژوهش جدید"); self.template=QComboBox(); self.template.addItems(self.templates())
   self.model=QComboBox(); self.model.setEditable(True); self.model.addItems(["gemini-2.5-flash","openrouter/free","nvidia/nemotron-3-super-120b-a12b:free","gpt-oss-120b"]); self.model.setCurrentText(os.environ.get("SHZ_LLM_MODEL","gemini-2.5-flash"))
-  self.cutoff=QLineEdit(); self.cutoff.setPlaceholderText("2026-11"); self.plot=QCheckBox("فعال‌سازی عامل تولید شکل و نمودار"); self.plot.setChecked(True)
+  self.cutoff=QLineEdit(); self.cutoff.setPlaceholderText("2026-11"); self.plot=QCheckBox("فعال‌سازی عامل تولید شکل و نمودار (مصرف API بیشتر)"); self.plot.setChecked(False)
   for args in [(QLabel("نام پروژه"),0,0),(self.name,0,1),(QLabel("قالب"),0,2),(self.template,0,3),(QLabel("مدل"),1,0),(self.model,1,1),(QLabel("تاریخ قطع منابع"),1,2),(self.cutoff,1,3),(self.plot,2,1)]: f.addWidget(*args)
-  pv.addWidget(g); row=QHBoxLayout(); a=QGroupBox("ایده پژوهش"); al=QVBoxLayout(a); self.idea=QPlainTextEdit(); self.idea.setPlaceholderText("ایده، مسئله، پرسش و نوآوری پژوهش…"); al.addWidget(self.idea)
+  pv.addWidget(g); pv.addWidget(QLabel("حالت کم‌مصرف: تولید نمودار به‌صورت پیش‌فرض خاموش است تا درخواست‌های اضافی و هزینه API کاهش یابد.")); row=QHBoxLayout(); a=QGroupBox("ایده پژوهش"); al=QVBoxLayout(a); self.idea=QPlainTextEdit(); self.idea.setPlaceholderText("ایده، مسئله، پرسش و نوآوری پژوهش…"); al.addWidget(self.idea)
   b=QGroupBox("گزارش آزمایش (اختیاری)"); bl=QVBoxLayout(b); self.notes=QPlainTextEdit(); self.notes.setPlaceholderText("اگر آزمایش انجام داده‌اید، روش، داده‌ها، نتایج و مشاهدات را وارد کنید. اگر هنوز داده‌ای ندارید، این قسمت را خالی بگذارید؛ برنامه مقاله را بدون ادعای نتایج تجربی آماده می‌کند."); bl.addWidget(self.notes); row.addWidget(a); row.addWidget(b); pv.addLayout(row,1)
   buttons=QHBoxLayout(); s=QPushButton("راهنمای گام‌به‌گام اتصال هوش مصنوعی"); s.clicked.connect(self.open_setup_wizard)
   self.go=QPushButton("شروع تولید مقاله"); self.go.clicked.connect(self.start); self.stop=QPushButton("توقف"); self.stop.setEnabled(False); self.stop.clicked.connect(self.cancel)
