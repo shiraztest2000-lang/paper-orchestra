@@ -227,10 +227,13 @@ class Window(QMainWindow):
   safe="".join(c if c.isalnum() or c in "-_ " else "_" for c in self.name.text()).strip().replace(" ","_")
   base=os.path.join(os.path.expanduser("~"),"Documents",APP,"Projects"); os.makedirs(base,exist_ok=True)
   self.run_dir=os.path.join(base,safe+"_"+datetime.now().strftime("%Y%m%d_%H%M%S")); raw=os.path.join(self.run_dir,"raw_materials"); os.makedirs(os.path.join(raw,"figures"),exist_ok=True)
-  open(os.path.join(raw,"idea_sparse.md"),"w",encoding="utf-8").write(idea);\n  if not notes:\n   notes=("No experimental data, methods, or results have been provided at this stage. "
+  open(os.path.join(raw,"idea_sparse.md"),"w",encoding="utf-8").write(idea)
+  if not notes:
+   notes=("No experimental data, methods, or results have been provided at this stage. "
           "Treat this as a proposal, conceptual, or literature-review paper as appropriate. "
           "Do not invent experiments, measurements, datasets, statistical results, or empirical findings. "
-          "Clearly distinguish proposed future work from completed research.")\n  open(os.path.join(raw,"experimental_log.md"),"w",encoding="utf-8").write(notes)
+          "Clearly distinguish proposed future work from completed research.")
+  open(os.path.join(raw,"experimental_log.md"),"w",encoding="utf-8").write(notes)
   self.log_path=os.path.join(self.run_dir,"desktop-run.log"); self.offset=0; self.output.clear(); self.bar.setValue(0)
   args=["--worker","--raw_materials_dir",raw,"--output_dir",self.run_dir,"--latex_template_dir",os.path.join(root_dir(),"templates",self.template.currentText()),"--writer_model_name",self.model.currentText(),"--reflection_model_name",self.model.currentText(),"--idea_filename","idea_sparse.md","--experimental_log_filename","experimental_log.md"]
   if self.cutoff.text().strip():args+=["--research_cutoff",self.cutoff.text().strip()]
