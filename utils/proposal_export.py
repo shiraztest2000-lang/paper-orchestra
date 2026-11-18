@@ -57,7 +57,7 @@ def _add_table(doc, headers, rows):
     for row in rows:
         cells = table.add_row().cells
         for i, value in enumerate(row):
-            cells[i].text = str(value or "—")
+            cells[i].text = str(value or "")
             for p in cells[i].paragraphs:
                 _rtl_paragraph(p)
                 for run in p.runs:
@@ -96,11 +96,13 @@ def export_proposal_docx(data, output_path):
         ["استاد راهنما", data.get("supervisor", "")],
         ["استاد مشاور", data.get("advisor", "")],
         ["تعداد واحد پایان‌نامه", data.get("credits", "")],
+        ["سال تحصیلی", data.get("academic_year", "")],
+        ["تاریخ تکمیل / چاپ", data.get("submission_date", "")],
     ])
     sections = [
         ("۱. اطلاعات مربوط به دانشجو", "مشخصات دانشجو طبق اطلاعات واردشده؛ موارد نامعلوم خالی است."),
-        ("۲. اطلاعات مربوط به استاد راهنما", "نام استاد راهنما: " + data.get("supervisor", "") + "\nسایر سوابق و مشخصات اداری استاد: نیازمند تکمیل توسط گروه آموزشی."),
-        ("۳. اطلاعات مربوط به استاد مشاور", "نام استاد مشاور: " + data.get("advisor", "") + "\nسایر مشخصات اداری استاد مشاور: نیازمند تکمیل توسط گروه آموزشی."),
+        ("۲. اطلاعات مربوط به استاد راهنما", ""),
+        ("۳. اطلاعات مربوط به استاد مشاور", ""),
         ("۴. اطلاعات مربوط به پایان‌نامه", "عنوان فارسی: " + title + "\nعنوان انگلیسی: " + data.get("title_en", "") + "\nرشته: " + data.get("field", "") + "\nگرایش: " + data.get("specialization", "") + "\nمقطع: " + data.get("degree", "کارشناسی ارشد") + "\nنوع تحقیق: " + data.get("research_type", "") + "\nزبان: " + data.get("language", "فارسی") + "\nتعداد واحد: " + data.get("credits", "") + "\nپرسش اصلی: " + data.get("main_question", "")),
         ("۵. بیان مسئله تحقیق", data.get("problem_statement", "")),
         ("۶. اهمیت و ضرورت انجام تحقیق", data.get("significance", "")),
@@ -128,8 +130,8 @@ def export_proposal_docx(data, output_path):
         ])),
         ("۲۰. جدول متغیرها", ""),
         ("۲۱. هزینه‌های تحقیق پایان‌نامه", data.get("budget_note", "")),
-        ("۲۲. تأیید طرح توسط استادان راهنما و مشاور", "نام، تاریخ و امضا: پس از بررسی حضوری تکمیل شود."),
-        ("۲۳. ضمایم", "فرم‌های تعهد دانشجو و استادان، اطلاعات تکمیلی، کدهای اداری و سایر پیوست‌ها باید از نسخه رسمی دانشگاه تکمیل شوند."),
+        ("۲۲. تأیید طرح توسط استادان راهنما و مشاور", ""),
+        ("۲۳. ضمایم", ""),
     ]
     for heading, body in sections:
         _add_heading(doc, heading, 1)
@@ -178,8 +180,9 @@ def export_proposal_docx(data, output_path):
                  ["۳", "سایر هزینه‌ها", "", "", ""], ["جمع", "", "", "", ""]])
         if heading.startswith("۲۲."):
             _add_table(doc, ["نقش", "نام و نام خانوادگی", "تاریخ", "امضا"],
-                [["استاد راهنما", data.get("supervisor", ""), "", ""],
-                 ["استاد مشاور", data.get("advisor", ""), "", ""]])
+                [["استاد راهنما", "", "", ""],
+                 ["استاد مشاور", "", "", ""],
+                 ["مدیر گروه / مسئول مربوط", "", "", ""]])
     _add_heading(doc, "تذکر مهم برای ثبت رسمی", 1)
     _add_text(doc, "این فایل پیش‌نویس کمکی است و جایگزین نسخه رسمی فرم دانشگاه نیست. مشخصات اداری، هزینه‌های واقعی، تأییدها و امضاها باید توسط دانشجو و واحد مربوط تکمیل شوند. همه منابع و روش پیشنهادی باید پیش از ثبت راستی‌آزمایی شوند.")
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
@@ -226,7 +229,7 @@ def proposal_markdown(data):
     for item in data.get("references", []):
         authors = ", ".join(item.get("authors") or [])
         lines.append(f"- [{item.get('id','')}] {authors} ({item.get('year','')}). {item.get('title','')}. {item.get('venue','')}. DOI: {item.get('doi','')}. {item.get('url','')}")
-    lines.extend(["", "## تذکر اداری", "", data.get("admin_note", "")])
+    lines.extend(["", "## ۲۲. تأییدها و امضاها", "", "| نقش | نام | تاریخ | امضا |", "|---|---|---|---|", "| استاد راهنما | | | |", "| استاد مشاور | | | |", "| مدیر گروه / مسئول مربوط | | | |", "", "## ۲۳. ضمایم", "", ""])
     return "\n".join(lines)
 
 
@@ -242,8 +245,8 @@ def proposal_html(data):
     for label, key in [("نام دانشجو","student"),("شماره دانشجویی","student_number"),
         ("مقطع","degree"),("رشته","field"),("گرایش","specialization"),
         ("دانشکده","college"),("استاد راهنما","supervisor"),("استاد مشاور","advisor"),
-        ("تعداد واحد","credits")]:
-        parts.append("<tr><th>" + label + "</th><td>" + para(data.get(key, "")) + "</td></tr>")
+        ("تعداد واحد","credits"),("سال تحصیلی","academic_year"),("تاریخ تکمیل / چاپ","submission_date")]:
+        parts.append("<tr><th>" + label + "</th><td>" + esc(str(data.get(key, "") or "")) + "</td></tr>")
     parts.append("</table>")
     labels = [
         ("research_type","۴. نوع تحقیق"),("main_question","۴. پرسش اصلی تحقیق"),
@@ -276,7 +279,7 @@ def proposal_html(data):
         if isinstance(row, dict):
             parts.append("<tr>" + "".join("<td>" + para(row.get(key)) + "</td>" for key in ["name","role","type","measurement","scale"]) + "</tr>")
     parts.append("</table><h2>۲۱. هزینه‌های تحقیق</h2><p>" + para(data.get("budget_note")) + "</p>")
-    parts.append("<h2>۲۲. تأیید طرح و امضاها</h2><p>پس از بررسی حضوری تکمیل شود.</p>")
-    parts.append("<h2>۲۳. ضمایم</h2><p>فرم‌های تعهد، مشخصات تکمیلی، کدها و امضاها باید از نسخه رسمی دانشگاه تکمیل شوند.</p>")
+    parts.append("<h2>۲۲. تأیید طرح و امضاها</h2><table><tr><th>نقش</th><th>نام و نام خانوادگی</th><th>تاریخ</th><th>امضا</th></tr><tr><td>استاد راهنما</td><td></td><td></td><td></td></tr><tr><td>استاد مشاور</td><td></td><td></td><td></td></tr><tr><td>مدیر گروه / مسئول مربوط</td><td></td><td></td><td></td></tr></table>")
+    parts.append("<h2>۲۳. ضمایم</h2>")
     parts.append("<p><b>تذکر:</b> این فایل پیش‌نویس کمکی است، نه نسخه رسمی فرم دانشگاه. پیش از ثبت، منابع و روش باید راستی‌آزمایی و بخش‌های اداری تکمیل شوند.</p></body></html>")
     return "".join(parts)
