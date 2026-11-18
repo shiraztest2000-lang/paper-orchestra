@@ -42,9 +42,11 @@ def get_openai_client() -> OpenAI:
     if _openai_client is None:
         with _openai_client_lock:
             if _openai_client is None:
-                from utils.provider_config import get_api_key, get_base_url, get_provider, is_openai_compatible
+                from utils.provider_config import get_api_key, get_base_url, get_provider, is_openai_compatible, is_free_mode
 
                 provider = get_provider()
+                if is_free_mode() and provider != "openrouter":
+                    raise ValueError("حالت کاملاً رایگان فقط اجازه اتصال به OpenRouter Free را می‌دهد.")
                 if not is_openai_compatible(provider):
                     raise ValueError(f"Provider '{provider}' is not OpenAI-compatible.")
                 openai_api_key = get_api_key(provider)
@@ -128,6 +130,11 @@ def call_openai_models_with_content(
     check_parsed_response_not_none: bool = True,
     system_prompt: str = None,
 ):
+    from utils.provider_config import is_free_mode
+    if is_free_mode():
+        if model_name != "openrouter/free" and not model_name.endswith(":free"):
+            raise ValueError("در حالت کاملاً رایگان، ارسال درخواست به مدل پولی مسدود است.")
+        max_retries = 1  # Avoid consuming the daily free request allowance with repeated retries.
     raw_response = None
     parsed_response = None
     openai_client = get_openai_client()
