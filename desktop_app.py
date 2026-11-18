@@ -33,7 +33,7 @@ class Settings(QDialog):
   "openai":{"name":"OpenAI","url":"https://platform.openai.com/api-keys","key":"OPENAI_API_KEY","free":"استفاده از API معمولاً هزینه دارد و اشتراک ChatGPT به‌معنی اعتبار API نیست."},
   "openai-compatible":{"name":"سرویس ابری سفارشی","url":"","key":"SHZ_LLM_API_KEY","free":"نشانی HTTPS و کلید را فقط از ارائه‌دهنده سرویس خود دریافت کنید."},
  }
- DEFAULT_MODELS={"gemini":"gemini-2.5-flash","openrouter":"openrouter/free","groq":"","cerebras":"","deepseek":"","together":"","openai":"","openai-compatible":""}
+ DEFAULT_MODELS={"gemini":"gemini-2.5-flash-lite","openrouter":"openrouter/free","groq":"","cerebras":"","deepseek":"","together":"","openai":"","openai-compatible":""}
  def __init__(self,parent=None):
   super().__init__(parent); self.setWindowTitle("راهنمای راه‌اندازی اتصال هوش مصنوعی"); self.resize(650,500); self.step=0; self.tested=False; self.discovered=[]
   self.stack=QStackedWidget(); root=QVBoxLayout(self)
@@ -66,7 +66,7 @@ class Settings(QDialog):
   keywrap=QWidget(); keywrap.setLayout(keybox); lay.addRow(self.key_label,keywrap)
   self.endpoint=QLineEdit(); self.endpoint.setPlaceholderText("https://api.example.com/v1"); lay.addRow("نشانی API سفارشی",self.endpoint)
   self.endpoint_label=QLabel("فقط برای سرویس سفارشی لازم است."); lay.addRow("",self.endpoint_label)
-  self.model=QComboBox(); self.model.setEditable(True); self.model.addItems(["gemini-2.5-flash","openrouter/free"]); lay.addRow("مدل هوش مصنوعی",self.model)
+  self.model=QComboBox(); self.model.setEditable(True); self.model.addItems(["gemini-2.5-flash-lite","openrouter/free"]); lay.addRow("مدل هوش مصنوعی",self.model)
   lay.addRow("",QLabel("نام مدل را می‌توانید دستی وارد کنید. برای ارائه‌دهنده‌های سازگار، در مرحله بعد فهرست مدل‌ها دریافت می‌شود."))
   self.stack.addWidget(page)
   # Step 4: verify and save.
@@ -204,7 +204,7 @@ class Window(QMainWindow):
   h.addWidget(t); h.addStretch(); h.addWidget(QLabel("سامانه هوشمند پژوهش و نگارش مقاله")); v.addLayout(h)
   tabs=QTabWidget(); self.tabs=tabs; p=QWidget(); pv=QVBoxLayout(p); g=QGroupBox("مشخصات پروژه"); f=QGridLayout(g)
   self.name=QLineEdit("پژوهش جدید"); self.template=QComboBox(); self.template.addItems(self.templates())
-  self.model=QComboBox(); self.model.setEditable(True); self.model.addItems(["gemini-2.5-flash","openrouter/free","nvidia/nemotron-3-super-120b-a12b:free","gpt-oss-120b"]); self.model.setCurrentText(os.environ.get("SHZ_LLM_MODEL","gemini-2.5-flash"))
+  self.model=QComboBox(); self.model.setEditable(True); self.model.addItems(["gemini-2.5-flash-lite","openrouter/free","nvidia/nemotron-3-super-120b-a12b:free","gpt-oss-120b"]); self.model.setCurrentText(os.environ.get("SHZ_LLM_MODEL","gemini-2.5-flash-lite"))
   self.cutoff=QLineEdit(); self.cutoff.setPlaceholderText("2026-11"); self.plot=QCheckBox("فعال‌سازی عامل تولید شکل و نمودار (مصرف API بیشتر)"); self.plot.setChecked(False)
   for args in [(QLabel("نام پروژه"),0,0),(self.name,0,1),(QLabel("قالب"),0,2),(self.template,0,3),(QLabel("مدل"),1,0),(self.model,1,1),(QLabel("تاریخ قطع منابع"),1,2),(self.cutoff,1,3),(self.plot,2,1)]: f.addWidget(*args)
   pv.addWidget(g); pv.addWidget(QLabel("حالت کم‌مصرف: تولید نمودار به‌صورت پیش‌فرض خاموش است تا درخواست‌های اضافی و هزینه API کاهش یابد.")); row=QHBoxLayout(); a=QGroupBox("ایده پژوهش"); al=QVBoxLayout(a); self.idea=QPlainTextEdit(); self.idea.setPlaceholderText("ایده، مسئله، پرسش و نوآوری پژوهش…"); al.addWidget(self.idea)
