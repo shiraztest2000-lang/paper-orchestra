@@ -67,7 +67,7 @@ class HybridLiteratureAgent:
         latex_template_path: str,
         conference_guidelines_path: str,
         output_dir: str,
-        model_name: str = "gemini-2.5-flash-lite-lite",
+        model_name: str = "gemini-2.5-flash-lite",
         max_workers: int = 5,
     ):
         self.output_dir = output_dir
