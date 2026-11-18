@@ -212,8 +212,24 @@ class Window(QMainWindow):
   p=os.path.join(root_dir(),"templates")
   return sorted(x for x in os.listdir(p) if os.path.isfile(os.path.join(p,x,"template.tex"))) if os.path.isdir(p) else ["cvpr2025","iclr2025"]
  def start(self):
-  idea=self.idea.toPlainText().strip(); notes=self.notes.toPlainText().strip()
-  if not self.name.text().strip() or not idea: QMessageBox.warning(self,"اطلاعات ناقص","نام پروژه و ایده پژوهش را وارد کنید. گزارش آزمایش اختیاری است."); return
+  project_title=self.name.text().strip(); idea=self.idea.toPlainText().strip(); notes=self.notes.toPlainText().strip()
+  if not project_title: QMessageBox.warning(self,"نام پروژه لازم است","ابتدا نام پروژه را وارد کنید."); return
+  if not idea:
+   idea=(
+    "عنوان اولیه پژوهش: "+project_title+"\\n\\n"
+    "دستور تدوین ایده پژوهش بر اساس عنوان:\\n"
+    "با تکیه بر عنوان بالا، مسئله پژوهش، اهمیت و ضرورت مطالعه، شکاف پژوهشی قابل بررسی، "
+    "هدف کلی، اهداف اختصاصی، پرسش‌های پژوهش و در صورت پشتیبانی شواهد، فرضیه‌های قابل آزمون را "
+    "به‌صورت علمی و منسجم صورت‌بندی کن. موضوع، جامعه، متغیرها و دامنه مطالعه را فقط تا حدی "
+    "استنباط کن که عنوان اجازه می‌دهد؛ هر مورد مبهم را به‌عنوان فرض اولیه یا نیازمند تأیید مشخص کن. "
+    "هیچ داده، نتیجه، نمونه، روش اجراشده یا یافته‌ای را جعل نکن. اگر اطلاعات کافی برای تعیین "
+    "روش‌شناسی وجود ندارد، چند گزینه روش‌شناختی مناسب را با ذکر پیش‌فرض‌ها پیشنهاد بده. "
+    "مقاله را متناسب با ماهیت واقعی کار (مروری، نظری، پروپوزال یا تجربی) طراحی کن و میان "
+    "پیشنهاد پژوهش و نتایج حاصل از پژوهش انجام‌شده تمایز روشن بگذار.\\n\\n"
+    "توجه: این ایده به‌صورت خودکار و صرفاً از عنوان پروژه ساخته شده و باید در مراحل پژوهش "
+    "با شواهد علمی و اطلاعات واقعی تکمیل و راستی‌آزمایی شود."
+   )
+   self.idea.setPlainText(idea)
   ep=os.path.join(data_dir(),".env")
   if os.path.isfile(ep):
    from dotenv import load_dotenv; load_dotenv(ep,override=True)
@@ -245,7 +261,10 @@ class Window(QMainWindow):
   if not getattr(sys,"frozen",False): args.insert(0,os.path.abspath(__file__))
   self.proc.setArguments(args); self.proc.setWorkingDirectory(root_dir()); self.proc.setProcessEnvironment(pe); self.proc.started.connect(self.process_started); self.proc.finished.connect(self.finished); self.proc.errorOccurred.connect(self.process_error)
   self.status.setText("در حال راه‌اندازی موتور پژوهش…"); self.bar.setRange(0,5); self.bar.setValue(0)
-  self.output.appendPlainText("درخواست تولید ثبت شد؛ در حال راه‌اندازی فرایند مستقل پژوهش…"); self.tabs.setCurrentIndex(1)
+  self.output.appendPlainText("درخواست تولید ثبت شد؛ در حال راه‌اندازی فرایند مستقل پژوهش…")
+  if not self.idea.toPlainText().strip():
+   self.output.appendPlainText("ایده پژوهش خالی بود؛ یک چارچوب اولیه بر اساس نام پروژه ساخته و در فایل ایده ذخیره شد.")
+  self.tabs.setCurrentIndex(1)
   self.go.setEnabled(False); self.stop.setEnabled(True); self.timer.start(); self.proc.start()
  def poll(self):
   if not self.log_path:return
