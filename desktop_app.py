@@ -5,6 +5,7 @@ def worker():
  p=os.environ.get("SHZ_PAPERORCHESTRA_LOG"); stream=open(p,"a",encoding="utf-8",buffering=1) if p else sys.stdout
  try:
   with redirect_stdout(stream),redirect_stderr(stream):
+   print("SHZ_PROGRESS:STARTUP",flush=True)
    sys.path.insert(0,root_dir()); import paper_writing_cli
    sys.argv=["paper_writing_cli.py"]+sys.argv[2:]; paper_writing_cli.main()
   return 0
@@ -184,7 +185,7 @@ class Window(QMainWindow):
    QMessageBox.warning(self,"ذخیره امن کلیدها", "خواندن مخزن امن ویندوز ناموفق بود. کلیدها بارگذاری نشدند.\\n"+str(exc))
   w=QWidget(); v=QVBoxLayout(w); h=QHBoxLayout(); t=QLabel(APP); t.setStyleSheet("font-size:22px;font-weight:bold;color:#214b91")
   h.addWidget(t); h.addStretch(); h.addWidget(QLabel("سامانه هوشمند پژوهش و نگارش مقاله")); v.addLayout(h)
-  tabs=QTabWidget(); p=QWidget(); pv=QVBoxLayout(p); g=QGroupBox("مشخصات پروژه"); f=QGridLayout(g)
+  tabs=QTabWidget(); self.tabs=tabs; p=QWidget(); pv=QVBoxLayout(p); g=QGroupBox("مشخصات پروژه"); f=QGridLayout(g)
   self.name=QLineEdit("پژوهش جدید"); self.template=QComboBox(); self.template.addItems(self.templates())
   self.model=QComboBox(); self.model.setEditable(True); self.model.addItems(["gemini-2.5-flash","openrouter/free","nvidia/nemotron-3-super-120b-a12b:free","gpt-oss-120b"]); self.model.setCurrentText(os.environ.get("SHZ_LLM_MODEL","gemini-2.5-flash"))
   self.cutoff=QLineEdit(); self.cutoff.setPlaceholderText("2026-11"); self.plot=QCheckBox("فعال‌سازی عامل تولید شکل و نمودار"); self.plot.setChecked(True)
@@ -198,7 +199,7 @@ class Window(QMainWindow):
   self.open=QPushButton("باز کردن پوشه خروجی"); self.open.setEnabled(False); self.open.clicked.connect(lambda:os.startfile(self.run_dir) if self.run_dir else None)
   qv.addWidget(self.status); qv.addWidget(self.bar); qv.addWidget(self.output,1); qv.addWidget(self.open); tabs.addTab(q,"گزارش اجرا"); v.addWidget(tabs); self.setCentralWidget(w); self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
   self.setStyleSheet("QMainWindow,QWidget{background:#f4f6fa;color:#172033;font-size:10pt} QLineEdit,QPlainTextEdit,QComboBox{background:white;border:1px solid #ccd4e0;border-radius:6px;padding:6px} QGroupBox{border:1px solid #ccd4e0;border-radius:8px;margin-top:10px;padding:10px} QPushButton{padding:9px;background:#e4eaf3;border-radius:6px}")
-  self.timer=QTimer(self); self.timer.setInterval(700); self.timer.timeout.connect(self.poll)
+  self.timer=QTimer(self); self.timer.setInterval(500); self.timer.timeout.connect(self.poll)
   from utils.provider_config import validate_provider_config
   provider=os.environ.get("SHZ_LLM_PROVIDER","gemini")
   ready,_=validate_provider_config(provider)
@@ -242,18 +243,33 @@ class Window(QMainWindow):
   for k,val in os.environ.items():pe.insert(k,val)
   pe.insert("SHZ_PAPERORCHESTRA_LOG",self.log_path); self.proc=QProcess(self); self.proc.setProgram(sys.executable);
   if not getattr(sys,"frozen",False): args.insert(0,os.path.abspath(__file__))
-  self.proc.setArguments(args); self.proc.setWorkingDirectory(root_dir()); self.proc.setProcessEnvironment(pe); self.proc.finished.connect(self.finished); self.proc.start()
-  if not self.proc.waitForStarted(5000):QMessageBox.critical(self,"خطا","اجرای موتور ناموفق بود."); self.proc=None; return
-  self.go.setEnabled(False); self.stop.setEnabled(True); self.timer.start(); self.status.setText("در حال اجرا…")
+  self.proc.setArguments(args); self.proc.setWorkingDirectory(root_dir()); self.proc.setProcessEnvironment(pe); self.proc.finished.connect(self.finished); self.proc.errorOccurred.connect(self.process_error); self.proc.start()
+  self.status.setText("در حال راه‌اندازی موتور پژوهش…"); self.bar.setRange(0,5); self.bar.setValue(0)
+  self.output.appendPlainText("درخواست تولید ثبت شد؛ در حال راه‌اندازی فرایند مستقل پژوهش…"); self.tabs.setCurrentIndex(1)
+  if not self.proc.waitForStarted(10000):
+   detail=self.proc.errorString(); self.status.setText("اجرای موتور شروع نشد"); self.output.appendPlainText("خطای راه‌اندازی: "+detail); QMessageBox.critical(self,"خطای اجرا","موتور پژوهش شروع نشد.\n"+detail); self.proc=None; self.go.setEnabled(True); self.stop.setEnabled(False); return
+  self.go.setEnabled(False); self.stop.setEnabled(True); self.timer.start(); self.status.setText("موتور اجرا شد؛ در انتظار شروع مرحله اول…"); self.bar.setValue(1)
  def poll(self):
-  if not self.log_path or not os.path.isfile(self.log_path):return
+  if not self.log_path:return
+  if not os.path.isfile(self.log_path):
+   if self.proc and self.proc.state()!=QProcess.ProcessState.NotRunning:self.status.setText("موتور فعال است؛ در حال آماده‌سازی گزارش اجرا…")
+   return
   with open(self.log_path,"r",encoding="utf-8",errors="replace") as f:f.seek(self.offset); chunk=f.read(); self.offset=f.tell()
   if chunk:
    self.output.moveCursor(self.output.textCursor().MoveOperation.End); self.output.insertPlainText(chunk)
-   for mark,n,label in [("OutlineAgent",1,"طراحی ساختار"),("Starting Fast Hybrid Literature Agent",2,"مرور منابع"),("PlottingAgent",3,"تولید شکل"),("SectionWritingAgent",4,"نگارش بخش‌ها"),("ContentRefinementAgent",5,"بازبینی نهایی")]:
-    if mark.lower() in chunk.lower():self.bar.setValue(max(n,self.bar.value())); self.status.setText(label)
+   stages=[("SHZ_PROGRESS:OUTLINE",1,"عامل طراحی ساختار مقاله"),("SHZ_PROGRESS:LITERATURE",2,"عامل جست‌وجو و مرور منابع"),("SHZ_PROGRESS:PLOTTING",3,"عامل تولید شکل‌ها و نمودارها"),("SHZ_PROGRESS:WRITING",4,"عامل نگارش بخش‌های مقاله"),("SHZ_PROGRESS:REFINEMENT",5,"عامل بازبینی و آماده‌سازی خروجی")]
+   for mark,n,label in stages:
+    if mark in chunk:self.bar.setValue(max(n,self.bar.value())); self.status.setText(label)
+ def process_error(self,error):
+  if self.proc:
+   detail=self.proc.errorString(); self.status.setText("خطا در اجرای موتور"); self.output.appendPlainText("خطای فرایند: "+detail)
  def finished(self,code,status):
-  self.timer.stop(); self.poll(); self.go.setEnabled(True); self.stop.setEnabled(False); self.open.setEnabled(True); self.status.setText("پایان موفق" if code==0 else "پایان همراه خطا؛ گزارش را بررسی کنید."); self.proc=None
+  self.timer.stop(); self.poll(); self.go.setEnabled(True); self.stop.setEnabled(False); self.open.setEnabled(bool(self.run_dir and os.path.isdir(self.run_dir)))
+  if code==0:
+   self.bar.setValue(5); self.status.setText("تولید مقاله با موفقیت پایان یافت"); self.output.appendPlainText("\nفرایند با موفقیت پایان یافت.")
+  else:
+   self.status.setText("تولید مقاله با خطا متوقف شد؛ گزارش اجرا را بررسی کنید."); self.output.appendPlainText(f"\nفرایند با کد خروج {code} پایان یافت؛ جزئیات خطا در گزارش بالا آمده است.")
+  self.proc=None
  def cancel(self):
   if self.proc and self.proc.state()!=QProcess.ProcessState.NotRunning:
    self.proc.terminate()
