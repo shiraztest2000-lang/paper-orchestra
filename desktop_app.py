@@ -356,11 +356,8 @@ class Window(QMainWindow):
   self.proposal_cutoff=QLineEdit(); self.proposal_cutoff.setPlaceholderText("سال آخر منابع، مثلاً 2026")
   for label,widget,r,c in [
    ("موضوع پژوهش",self.proposal_topic,0,0),("رشته",self.proposal_field,1,0),("گرایش",self.proposal_specialization,1,1),
-   ("مقطع",self.proposal_degree,2,0),("روش ترجیحی",self.proposal_method,2,1),("دانشجو",self.proposal_student,3,0),
-   ("شماره دانشجویی",self.proposal_student_number,3,1),("دانشکده",self.proposal_college,4,0),
-   ("استاد راهنما",self.proposal_supervisor,4,1),("استاد مشاور",self.proposal_advisor,5,0),
-   ("تعداد واحد",self.proposal_credits,5,1),("جامعه/میدان پژوهش",self.proposal_population,6,0),
-   ("سال آخر منابع",self.proposal_cutoff,6,1)]:
+   ("مقطع",self.proposal_degree,2,0),("روش ترجیحی",self.proposal_method,2,1),
+   ("جامعه/میدان پژوهش",self.proposal_population,3,0),("سال آخر منابع",self.proposal_cutoff,3,1)]:
    pf.addWidget(QLabel(label),r,c*2); pf.addWidget(widget,r,c*2+1)
   proposal_form.addLayout(pf)
   proposal_form.addWidget(QLabel("توضیحات تکمیلی: مسئله، متغیرها، محل اجرا، محدودیت‌ها یا اطلاعاتی که باید در تدوین لحاظ شوند"))
