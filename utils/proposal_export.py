@@ -100,7 +100,7 @@ def export_proposal_docx(data, output_path):
         ["تاریخ تکمیل / چاپ", data.get("submission_date", "")],
     ])
     sections = [
-        ("۱. اطلاعات مربوط به دانشجو", "مشخصات دانشجو طبق اطلاعات واردشده؛ موارد نامعلوم خالی است."),
+        ("۱. اطلاعات مربوط به دانشجو", ""),
         ("۲. اطلاعات مربوط به استاد راهنما", ""),
         ("۳. اطلاعات مربوط به استاد مشاور", ""),
         ("۴. اطلاعات مربوط به پایان‌نامه", "عنوان فارسی: " + title + "\nعنوان انگلیسی: " + data.get("title_en", "") + "\nرشته: " + data.get("field", "") + "\nگرایش: " + data.get("specialization", "") + "\nمقطع: " + data.get("degree", "کارشناسی ارشد") + "\nنوع تحقیق: " + data.get("research_type", "") + "\nزبان: " + data.get("language", "فارسی") + "\nتعداد واحد: " + data.get("credits", "") + "\nپرسش اصلی: " + data.get("main_question", "")),
@@ -199,7 +199,8 @@ def proposal_markdown(data):
     for label, key in [
         ("نام دانشجو","student"),("شماره دانشجویی","student_number"),("مقطع","degree"),
         ("رشته","field"),("گرایش","specialization"),("دانشکده","college"),
-        ("استاد راهنما","supervisor"),("استاد مشاور","advisor"),("تعداد واحد","credits")
+        ("استاد راهنما","supervisor"),("استاد مشاور","advisor"),("تعداد واحد","credits"),
+        ("سال تحصیلی","academic_year"),("تاریخ تکمیل / چاپ","submission_date")
     ]:
         lines.append(f"- {label}: {data.get(key,'')}")
     keys = [
