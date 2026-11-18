@@ -38,7 +38,11 @@ def _add_candidate(found: dict, title: str, year, source: str,
                    detail: str = "") -> None:
     title = _clean_title(title)
     try:
-        year = int(year)
+        if isinstance(year, str):
+            match = re.match(r"\\s*(\\d{4})", year)
+            year = int(match.group(1)) if match else int(year)
+        else:
+            year = int(year)
     except (TypeError, ValueError):
         return
     if not title or year < 1500 or (cutoff_year and year > cutoff_year):
