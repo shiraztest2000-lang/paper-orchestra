@@ -71,7 +71,7 @@ def _search_openalex(query: str, cutoff_year: int | None, limit: int,
         params={
             "search": query,
             "per-page": min(max(limit, 1), 25),
-            "select": "id,doi,display_name,publication_year,cited_by_count",
+            "select": "id,doi,display_name,publication_year,cited_by_count,open_access,best_oa_location",
         },
         headers=headers,
         timeout=TIMEOUT,
@@ -79,11 +79,15 @@ def _search_openalex(query: str, cutoff_year: int | None, limit: int,
     response.raise_for_status()
     for work in response.json().get("results", []):
         doi = (work.get("doi") or "").replace("https://doi.org/", "")
-        url = f"https://doi.org/{doi}" if doi else work.get("id", "")
+        oa = work.get("open_access") or {}
+        location = work.get("best_oa_location") or {}
+        oa_url = location.get("landing_page_url") or location.get("pdf_url") or ""
+        url = oa_url or (f"https://doi.org/{doi}" if doi else work.get("id", ""))
+        access = "open access" if oa.get("is_oa") else "full text not confirmed open"
         _add_candidate(
             found, work.get("display_name", ""), work.get("publication_year"),
             "OpenAlex", url, cutoff_year,
-            f"citations: {work.get('cited_by_count', 0)}",
+            f"citations: {work.get('cited_by_count', 0)}; {access}",
         )
 
 
@@ -140,10 +144,11 @@ def _search_europe_pmc(query: str, cutoff_year: int | None, limit: int,
             else f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/" if pmid
             else f"https://doi.org/{doi}" if doi else ""
         )
+        access = "open access" if str(work.get("isOpenAccess", "N")).upper() in {"Y", "TRUE"} else "open access not confirmed"
         _add_candidate(
             found, work.get("title", ""),
             work.get("firstPublicationDate", work.get("pubYear")),
-            "Europe PMC", url, cutoff_year,
+            "Europe PMC", url, cutoff_year, access,
         )
 
 
