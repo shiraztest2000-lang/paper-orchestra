@@ -30,7 +30,7 @@ def _cutoff_year(cutoff_date: str | None) -> int | None:
 
 
 def _clean_title(value: str) -> str:
-    return re.sub(r"\\s+", " ", (value or "")).strip()
+    return re.sub(r"\s+", " ", (value or "")).strip()
 
 
 def _add_candidate(found: dict, title: str, year, source: str,
