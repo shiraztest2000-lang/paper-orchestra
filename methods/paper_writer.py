@@ -55,7 +55,7 @@ def write_single_paper(
         shutil.copytree(old_figure_dir, new_figure_dir, dirs_exist_ok=True)
     figures_dir = new_figure_dir
 
-    max_n_tries = 3
+    max_n_tries = 1
     cur_try = 0
     succeed = False
 
@@ -173,7 +173,7 @@ def write_single_paper(
                 citation_map_path=citation_map_path,
                 guidelines_path=guidelines_path,
                 model_name=reflection_model_name,
-                max_reflections=3,
+                max_reflections=1,
                 work_dir=content_refinement_workdir,
             )
             content_refinment_agent_output_pdf_path = content_refinement_agent.run(
