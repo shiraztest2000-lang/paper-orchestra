@@ -83,7 +83,7 @@ def main():
     parser.add_argument(
         "--plotting_max_critic_rounds",
         type=int,
-        default=3,
+        default=1,
         help="Maximum rounds of self-correction in the plotting agent.",
     )
 
