@@ -236,7 +236,12 @@ class Window(QMainWindow):
   tabs=QTabWidget(); self.tabs=tabs; p=QWidget(); pv=QVBoxLayout(p); g=QGroupBox("مشخصات پروژه"); f=QGridLayout(g)
   self.name=QLineEdit("پژوهش جدید"); self.template=QComboBox(); self.template.addItems(self.templates())
   self.model=QComboBox(); self.model.setEditable(True); self.model.addItems(["gemini-2.5-flash-lite","openrouter/free","nvidia/nemotron-3-super-120b-a12b:free","gpt-oss-120b"]); self.model.setCurrentText(os.environ.get("SHZ_LLM_MODEL","gemini-2.5-flash-lite"))
+  free_mode=os.environ.get("SHZ_FREE_MODE","").strip().lower() in {"1","true","yes","on"}
+  if free_mode:
+   self.model.clear(); self.model.addItem("openrouter/free"); self.model.setEditable(False)
   self.cutoff=QLineEdit(); self.cutoff.setPlaceholderText("2026-11"); self.plot=QCheckBox("فعال‌سازی عامل تولید شکل و نمودار (مصرف API بیشتر)"); self.plot.setChecked(False)
+  self.plot.setEnabled(not free_mode)
+  if free_mode:self.plot.setToolTip("در حالت کاملاً رایگان، تولید تصویر و نمودار با سرویس‌های غیررایگان غیرفعال است.")
   for args in [(QLabel("نام پروژه"),0,0),(self.name,0,1),(QLabel("قالب"),0,2),(self.template,0,3),(QLabel("مدل"),1,0),(self.model,1,1),(QLabel("تاریخ قطع منابع"),1,2),(self.cutoff,1,3),(self.plot,2,1)]: f.addWidget(*args)
   pv.addWidget(g); pv.addWidget(QLabel("حالت کم‌مصرف: تولید نمودار به‌صورت پیش‌فرض خاموش است تا درخواست‌های اضافی و هزینه API کاهش یابد.")); row=QHBoxLayout(); a=QGroupBox("ایده پژوهش"); al=QVBoxLayout(a); self.idea=QPlainTextEdit(); self.idea.setPlaceholderText("ایده، مسئله، پرسش و نوآوری پژوهش…"); al.addWidget(self.idea)
   b=QGroupBox("گزارش آزمایش (اختیاری)"); bl=QVBoxLayout(b); self.notes=QPlainTextEdit(); self.notes.setPlaceholderText("اگر آزمایش انجام داده‌اید، روش، داده‌ها، نتایج و مشاهدات را وارد کنید. اگر هنوز داده‌ای ندارید، این قسمت را خالی بگذارید؛ برنامه مقاله را بدون ادعای نتایج تجربی آماده می‌کند."); bl.addWidget(self.notes); row.addWidget(a); row.addWidget(b); pv.addLayout(row,1)
@@ -255,7 +260,15 @@ class Window(QMainWindow):
  def open_setup_wizard(self):
   dialog=Settings(self)
   dialog.exec()
-  self.model.setCurrentText(os.environ.get("SHZ_LLM_MODEL",self.model.currentText()))
+  free_mode=os.environ.get("SHZ_FREE_MODE","").strip().lower() in {"1","true","yes","on"}
+  if free_mode:
+   self.model.clear(); self.model.addItem("openrouter/free"); self.model.setEditable(False)
+   self.plot.setChecked(False); self.plot.setEnabled(False)
+   self.plot.setToolTip("در حالت کاملاً رایگان، تولید تصویر و نمودار با سرویس‌های غیررایگان غیرفعال است.")
+  else:
+   self.model.setEditable(True)
+   self.model.setCurrentText(os.environ.get("SHZ_LLM_MODEL",self.model.currentText()))
+   self.plot.setEnabled(True)
  def templates(self):
   p=os.path.join(root_dir(),"templates")
   return sorted(x for x in os.listdir(p) if os.path.isfile(os.path.join(p,x,"template.tex"))) if os.path.isdir(p) else ["cvpr2025","iclr2025"]
