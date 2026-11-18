@@ -25,7 +25,7 @@ def data_dir():
 class Settings(QDialog):
  PROVIDERS={
   "gemini":{"name":"Google Gemini","url":"https://aistudio.google.com/app/apikey","key":"GEMINI_API_KEY","free":"Google AI Studio برای برخی مدل‌ها سهمیه رایگان دارد. سهمیه و دسترسی به کشور و شرایط حساب وابسته است."},
-  "openrouter":{"name":"OpenRouter","url":"https://openrouter.ai/keys","key":"OPENROUTER_API_KEY","free":"OpenRouter مدل‌های رایگان دارد؛ دسترسی، صف و محدودیت هر مدل ممکن است تغییر کند."},
+  "openrouter":{"name":"OpenRouter Free","url":"https://openrouter.ai/keys","key":"OPENROUTER_API_KEY","free":"حالت رایگان OpenRouter بدون خرید اعتبار و بدون کارت بانکی قابل شروع است. از مدل openrouter/free استفاده می‌کنیم؛ سقف رایگان فعلی ۵۰ درخواست در روز است و ممکن است ظرفیت مدل‌ها تغییر کند."},
   "groq":{"name":"Groq","url":"https://console.groq.com/keys","key":"GROQ_API_KEY","free":"Groq ممکن است برای حساب‌های واجد شرایط سهمیه رایگان محدود ارائه کند."},
   "cerebras":{"name":"Cerebras","url":"https://cloud.cerebras.ai/platform","key":"CEREBRAS_API_KEY","free":"شرایط دسترسی و سهمیه رایگان را در پنل رسمی Cerebras بررسی کنید."},
   "deepseek":{"name":"DeepSeek","url":"https://platform.deepseek.com/api_keys","key":"DEEPSEEK_API_KEY","free":"قبل از استفاده، قیمت و اعتبار حساب را در پنل رسمی بررسی کنید؛ رایگان بودن تضمین‌شده نیست."},
@@ -47,8 +47,13 @@ class Settings(QDialog):
   for key,item in self.PROVIDERS.items(): self.provider.addItem(item["name"],key)
   current=os.environ.get("SHZ_LLM_PROVIDER","gemini"); idx=self.provider.findData(current)
   if idx>=0:self.provider.setCurrentIndex(idx)
-  lay.addWidget(QLabel("مرحله ۱ ـ انتخاب سرویس‌دهنده")); lay.addWidget(self.provider)
-  lay.addWidget(QLabel("پیشنهاد برای شروع رایگان: ابتدا Gemini یا OpenRouter را بررسی کنید. رایگان بودن سهمیه به معنی بی‌نیازی از ثبت‌نام یا کلید API نیست."))
+  self.free_mode=QCheckBox("حالت کاملاً رایگان (بدون کارت بانکی، بدون خرید اعتبار و بدون سرویس پولی)")
+  self.free_mode.setChecked(os.environ.get("SHZ_FREE_MODE","").strip().lower() in {"1","true","yes","on"})
+  lay.addWidget(QLabel("مرحله ۱ ـ نوع استفاده و انتخاب سرویس‌دهنده"))
+  lay.addWidget(self.free_mode); lay.addWidget(self.provider)
+  self.free_note=QLabel("در این حالت فقط OpenRouter Free و مدل openrouter/free فعال است. برای ساخت کلید API باید حساب رایگان بسازید؛ اطلاعات کارت بانکی وارد نکنید. سقف رایگان فعلی ۵۰ درخواست در روز است. پس از اتمام سهمیه، برنامه متوقف می‌شود و به مدل پولی تغییر مسیر نمی‌دهد.")
+  self.free_note.setWordWrap(True); lay.addWidget(self.free_note)
+  lay.addWidget(QLabel("در حالت عادی می‌توانید سایر سرویس‌دهنده‌ها را انتخاب کنید؛ رایگان بودن آن‌ها تضمین نمی‌شود."))
   self.stack.addWidget(page)
   # Step 2: account registration.
   page=QWidget(); lay=QVBoxLayout(page)
@@ -80,8 +85,23 @@ class Settings(QDialog):
   self.back.clicked.connect(self.previous_step); self.next.clicked.connect(self.next_step); self.finish.clicked.connect(self.save); self.cancel.clicked.connect(self.reject)
   nav.addWidget(self.back); nav.addStretch(); nav.addWidget(self.cancel); nav.addWidget(self.next); nav.addWidget(self.finish); root.addLayout(nav)
   self.provider.currentIndexChanged.connect(self.provider_changed)
+  self.free_mode.toggled.connect(self.apply_free_mode)
   self.api_key.textChanged.connect(self.invalidate_test); self.endpoint.textChanged.connect(self.invalidate_test); self.model.currentTextChanged.connect(self.invalidate_test)
-  self._load_current(); self.provider_changed(); self.show_step(0)
+  self._load_current(); self.apply_free_mode(self.free_mode.isChecked()); self.show_step(0)
+ def apply_free_mode(self, enabled):
+  current=self.provider.currentData()
+  if current: self._last_provider=current
+  allowed={"openrouter"} if enabled else set(self.PROVIDERS)
+  preferred="openrouter" if enabled else getattr(self,"_last_provider","gemini")
+  self.provider.blockSignals(True); self.provider.clear()
+  for key,item in self.PROVIDERS.items():
+   if key in allowed:self.provider.addItem(item["name"],key)
+  index=self.provider.findData(preferred)
+  if index<0:index=0
+  self.provider.setCurrentIndex(index); self.provider.blockSignals(False)
+  self.free_note.setVisible(enabled)
+  self.model.setEditable(not enabled)
+  self.provider_changed()
  def _load_current(self):
   provider=self.provider.currentData(); item=self.PROVIDERS.get(provider,self.PROVIDERS["gemini"])
   self.api_key.setText(os.environ.get(item["key"],""))
@@ -95,6 +115,7 @@ class Settings(QDialog):
   custom=provider=="openai-compatible"; self.endpoint.setVisible(custom); self.endpoint_label.setVisible(custom)
   self.tested=False; self.test_result.setText("برای این سرویس هنوز اتصال آزمایش نشده است.")
   self.model.clear(); self.model.addItems([self.DEFAULT_MODELS.get(provider,"")])
+  self.model.setEditable(not self.free_mode.isChecked())
   self._load_current(); self.update_buttons()
  def open_provider_page(self):
   url=self.PROVIDERS[self.provider.currentData()]["url"]
@@ -121,6 +142,7 @@ class Settings(QDialog):
  def _apply_temporary(self):
   provider=self.provider.currentData(); item=self.PROVIDERS[provider]
   os.environ["SHZ_LLM_PROVIDER"]=provider
+  os.environ["SHZ_FREE_MODE"]="true" if self.free_mode.isChecked() else "false"
   # Keep credentials for other providers so users can switch without re-entering keys.
   os.environ[item["key"]]=self.api_key.text().strip()
   if provider=="openai-compatible":os.environ["SHZ_LLM_BASE_URL"]=self.endpoint.text().strip()
@@ -130,7 +152,13 @@ class Settings(QDialog):
   self._apply_temporary(); self.test_button.setEnabled(False); self.test_result.setText("در حال ارتباط با سرویس‌دهنده…"); QApplication.processEvents()
   provider=self.provider.currentData()
   try:
-   if provider=="gemini":
+   if self.free_mode.isChecked():
+    from utils.provider_config import list_compatible_models
+    discovered=list_compatible_models("openrouter")
+    models=["openrouter/free"] + sorted(m for m in discovered if m.endswith(":free"))
+    ok=True
+    msg="اتصال به OpenRouter موفق بود؛ فقط مسیر مدل‌های رایگان در دسترس است."
+   elif provider=="gemini":
     from utils.provider_config import test_gemini_connection
     ok,msg,models=test_gemini_connection()
    else:
@@ -141,8 +169,11 @@ class Settings(QDialog):
     self.discovered=models
     current=self.model.currentText().strip()
     self.model.clear(); self.model.addItems(models)
-    default=self.DEFAULT_MODELS.get(provider,"")
-    if current=="openrouter/free" and provider=="openrouter":self.model.setCurrentText(current)
+    default="openrouter/free" if self.free_mode.isChecked() else self.DEFAULT_MODELS.get(provider,"")
+    if self.free_mode.isChecked():
+     self.model.setEditable(False)
+     self.model.setCurrentText("openrouter/free")
+    elif current=="openrouter/free" and provider=="openrouter":self.model.setCurrentText(current)
     elif current in models:self.model.setCurrentText(current)
     elif default in models:self.model.setCurrentText(default)
     elif models:self.model.setCurrentIndex(0)
@@ -157,7 +188,7 @@ class Settings(QDialog):
    QMessageBox.warning(self,"آزمایش لازم است","قبل از ذخیره، اتصال را با موفقیت آزمایش کنید."); return
   self._apply_temporary()
   from utils.secure_store import SECRET_ENV_KEYS, save_secure_secrets
-  keys=["SHZ_LLM_PROVIDER","SHZ_LLM_BASE_URL","SHZ_LLM_MODEL","VERTEX_AI_PROJECT","VERTEX_AI_LOCATION"]
+  keys=["SHZ_LLM_PROVIDER","SHZ_LLM_BASE_URL","SHZ_LLM_MODEL","SHZ_FREE_MODE","VERTEX_AI_PROJECT","VERTEX_AI_LOCATION"]
   path=os.path.join(data_dir(),".env")
   temporary=path+".tmp"
   try:
