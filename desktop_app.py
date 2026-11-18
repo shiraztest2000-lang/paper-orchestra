@@ -47,17 +47,19 @@ class Settings(QDialog):
   for key,item in self.PROVIDERS.items(): self.provider.addItem(item["name"],key)
   current=os.environ.get("SHZ_LLM_PROVIDER","gemini"); idx=self.provider.findData(current)
   if idx>=0:self.provider.setCurrentIndex(idx)
-  self.free_mode=QCheckBox("حالت کاملاً رایگان (بدون کارت بانکی، بدون خرید اعتبار و بدون سرویس پولی)")
-  self.free_mode.setChecked(os.environ.get("SHZ_FREE_MODE","").strip().lower() in {"1","true","yes","on"})
-  lay.addWidget(QLabel("مرحله ۱ ـ نوع استفاده و انتخاب سرویس‌دهنده"))
-  lay.addWidget(self.free_mode); lay.addWidget(self.provider)
-  self.free_note=QLabel("در این حالت فقط OpenRouter Free و مدل openrouter/free فعال است. برای ساخت کلید API باید حساب رایگان بسازید؛ اطلاعات کارت بانکی وارد نکنید. سقف رایگان فعلی ۵۰ درخواست در روز است. پس از اتمام سهمیه، برنامه متوقف می‌شود و به مدل پولی تغییر مسیر نمی‌دهد.")
+  self.mode_group=QButtonGroup(self)
+  self.standard_mode=QRadioButton("گزینه ۱ ـ اتصال به سرویس هوش مصنوعی (ممکن است پولی باشد)")
+  self.free_mode=QRadioButton("گزینه ۲ ـ هوش مصنوعی رایگان OpenRouter (نیازمند حساب و کلید API)")
+  self.no_account_mode=QRadioButton("گزینه ۳ ـ جستجوی علمی کاملاً رایگان، بدون ثبت‌نام و بدون کلید API")
+  for button in (self.standard_mode,self.free_mode,self.no_account_mode): self.mode_group.addButton(button); lay.addWidget(button)
+  saved_no_account=os.environ.get("SHZ_NO_ACCOUNT_MODE","").strip().lower() in {"1","true","yes","on"}
+  saved_free=os.environ.get("SHZ_FREE_MODE","").strip().lower() in {"1","true","yes","on"}
+  (self.no_account_mode if saved_no_account else self.free_mode if saved_free else self.standard_mode).setChecked(True)
+  lay.addWidget(QLabel("در گزینهٔ سوم، جست‌وجو در پایگاه‌های علمی مستقیماً و بدون حساب کاربری انجام می‌شود. این گزینه برای کشف مقاله و دریافت اطلاعات کتاب‌شناختی است؛ تولید متن با هوش مصنوعی در آن فعال نیست."))
+  self.free_note=QLabel("در این حالت فقط OpenRouter Free و مدل openrouter/free فعال است. برای ساخت کلید API باید حساب رایگان بسازید؛ اطلاعات کارت بانکی وارد نکنید. سهمیه محدود است و پس از اتمام آن، برنامه متوقف می‌شود و به مدل پولی تغییر مسیر نمی‌دهد.")
   self.free_note.setWordWrap(True); lay.addWidget(self.free_note)
-  lay.addWidget(QLabel("گزینه مستقل و بدون ثبت‌نام: جستجوی مقاله در OpenAlex، Crossref، Europe PMC و arXiv؛ این جستجو به کلید API یا حساب کاربری نیاز ندارد و حتی بدون اتصال هوش مصنوعی قابل استفاده است."))
-  self.no_account_search=QPushButton("ورود به جستجوی مقالات رایگان، بدون ثبت‌نام")
-  self.no_account_search.clicked.connect(self.open_no_account_search)
-  lay.addWidget(self.no_account_search)
-  lay.addWidget(QLabel("در حالت عادی می‌توانید سایر سرویس‌دهنده‌ها را انتخاب کنید؛ رایگان بودن آن‌ها تضمین نمی‌شود."))
+  lay.addWidget(self.provider)
+  lay.addWidget(QLabel("در گزینهٔ اول، رایگان بودن سایر سرویس‌دهنده‌ها تضمین نمی‌شود."))
   self.stack.addWidget(page)
   # Step 2: account registration.
   page=QWidget(); lay=QVBoxLayout(page)
@@ -89,27 +91,28 @@ class Settings(QDialog):
   self.back.clicked.connect(self.previous_step); self.next.clicked.connect(self.next_step); self.finish.clicked.connect(self.save); self.cancel.clicked.connect(self.reject)
   nav.addWidget(self.back); nav.addStretch(); nav.addWidget(self.cancel); nav.addWidget(self.next); nav.addWidget(self.finish); root.addLayout(nav)
   self.provider.currentIndexChanged.connect(self.provider_changed)
-  self.free_mode.toggled.connect(self.apply_free_mode)
+  self.standard_mode.toggled.connect(self.apply_mode)
+  self.free_mode.toggled.connect(self.apply_mode)
+  self.no_account_mode.toggled.connect(self.apply_mode)
   self.api_key.textChanged.connect(self.invalidate_test); self.endpoint.textChanged.connect(self.invalidate_test); self.model.currentTextChanged.connect(self.invalidate_test)
-  self._load_current(); self.apply_free_mode(self.free_mode.isChecked()); self.show_step(0)
- def open_no_account_search(self):
-  parent=self.parent()
-  if parent and hasattr(parent,"show_literature_tab"): parent.show_literature_tab()
-  self.reject()
- def apply_free_mode(self, enabled):
+  self._load_current(); self.apply_mode(); self.show_step(0)
+ def apply_mode(self,*args):
   current=self.provider.currentData()
-  if current: self._last_provider=current
-  allowed={"openrouter"} if enabled else set(self.PROVIDERS)
-  preferred="openrouter" if enabled else getattr(self,"_last_provider","gemini")
+  if current and current!="openrouter": self._last_provider=current
+  no_account=self.no_account_mode.isChecked()
+  free=self.free_mode.isChecked()
+  allowed={"openrouter"} if free else set(self.PROVIDERS)
+  preferred="openrouter" if free else getattr(self,"_last_provider","gemini")
   self.provider.blockSignals(True); self.provider.clear()
   for key,item in self.PROVIDERS.items():
    if key in allowed:self.provider.addItem(item["name"],key)
   index=self.provider.findData(preferred)
-  if index<0:index=0
-  self.provider.setCurrentIndex(index); self.provider.blockSignals(False)
-  self.free_note.setVisible(enabled)
-  self.model.setEditable(not enabled)
+  self.provider.setCurrentIndex(max(index,0)); self.provider.blockSignals(False)
+  self.provider.setEnabled(not no_account and not free)
+  self.free_note.setVisible(free)
+  self.model.setEditable(not free)
   self.provider_changed()
+  self.update_buttons()
  def _load_current(self):
   provider=self.provider.currentData(); item=self.PROVIDERS.get(provider,self.PROVIDERS["gemini"])
   self.api_key.setText(os.environ.get(item["key"],""))
@@ -134,7 +137,12 @@ class Settings(QDialog):
   self.heading.setText(names[n]); self.progress.setText(f"گام {n+1} از ۴")
   self.update_buttons()
  def update_buttons(self):
-  self.back.setEnabled(self.step>0); self.next.setVisible(self.step<3); self.finish.setVisible(self.step==3); self.finish.setEnabled(self.step==3 and self.tested)
+  no_account=self.no_account_mode.isChecked()
+  self.back.setEnabled(self.step>0 and not no_account)
+  self.next.setVisible(self.step<3 and not no_account)
+  self.finish.setVisible(self.step==3 or (self.step==0 and no_account))
+  self.finish.setText("شروع جستجوی رایگان" if no_account else "ذخیره تنظیمات و پایان")
+  self.finish.setEnabled((self.step==0 and no_account) or (self.step==3 and self.tested))
  def invalidate_test(self,*args):
   self.tested=False
   if self.step==3:self.test_result.setText("اطلاعات اتصال تغییر کرده است؛ دوباره آزمایش کنید.")
@@ -151,6 +159,7 @@ class Settings(QDialog):
   provider=self.provider.currentData(); item=self.PROVIDERS[provider]
   os.environ["SHZ_LLM_PROVIDER"]=provider
   os.environ["SHZ_FREE_MODE"]="true" if self.free_mode.isChecked() else "false"
+  os.environ["SHZ_NO_ACCOUNT_MODE"]="false"
   # Keep credentials for other providers so users can switch without re-entering keys.
   os.environ[item["key"]]=self.api_key.text().strip()
   if provider=="openai-compatible":os.environ["SHZ_LLM_BASE_URL"]=self.endpoint.text().strip()
@@ -191,12 +200,40 @@ class Settings(QDialog):
   except Exception as exc:
    self.tested=False; self.test_result.setText("✕ اتصال ناموفق بود.\n"+str(exc)); self.test_result.setStyleSheet("color:#a12b2b")
   finally:self.test_button.setEnabled(True); self.update_buttons()
+ def save_no_account_mode(self):
+  os.environ["SHZ_NO_ACCOUNT_MODE"]="true"
+  os.environ["SHZ_FREE_MODE"]="false"
+  os.environ["SHZ_SETUP_COMPLETED"]="true"
+  keys=["SHZ_LLM_PROVIDER","SHZ_LLM_BASE_URL","SHZ_LLM_MODEL","SHZ_FREE_MODE","SHZ_NO_ACCOUNT_MODE","SHZ_SETUP_COMPLETED","VERTEX_AI_PROJECT","VERTEX_AI_LOCATION"]
+  path=os.path.join(data_dir(),".env"); temporary=path+".tmp"
+  try:
+   with open(temporary,"w",encoding="utf-8",newline="\\n") as f:
+    for key in keys:
+     value=os.environ.get(key,"").replace("\\r","").replace("\\n","")
+     f.write(key+"="+value+"\\n")
+    f.flush(); os.fsync(f.fileno())
+   os.replace(temporary,path)
+   with open(path,"r",encoding="utf-8") as f: saved=f.read()
+   if "SHZ_NO_ACCOUNT_MODE=true\\n" not in saved or "SHZ_SETUP_COMPLETED=true\\n" not in saved:
+    raise OSError("حالت جستجوی بدون ثبت‌نام پس از ذخیره‌سازی قابل تأیید نیست.")
+  except Exception as exc:
+   try:
+    if os.path.exists(temporary): os.remove(temporary)
+   except OSError: pass
+   QMessageBox.critical(self,"ذخیره تنظیمات ناموفق","حالت جستجوی رایگان ذخیره نشد؛ پنجره باز می‌ماند.\\n"+str(exc)); return
+  parent=self.parent()
+  if parent and hasattr(parent,"activate_no_account_mode"): parent.activate_no_account_mode(False)
+  QMessageBox.information(self,"حالت رایگان فعال شد","جستجوی مقالات علمی بدون ثبت‌نام، کلید API یا پرداخت فعال شد. تولید متن با هوش مصنوعی در این حالت غیرفعال است.")
+  self.accept()
  def save(self):
+  if self.no_account_mode.isChecked():
+   self.save_no_account_mode(); return
   if not self.tested:
    QMessageBox.warning(self,"آزمایش لازم است","قبل از ذخیره، اتصال را با موفقیت آزمایش کنید."); return
   self._apply_temporary()
+  os.environ["SHZ_SETUP_COMPLETED"]="true"
   from utils.secure_store import SECRET_ENV_KEYS, save_secure_secrets
-  keys=["SHZ_LLM_PROVIDER","SHZ_LLM_BASE_URL","SHZ_LLM_MODEL","SHZ_FREE_MODE","VERTEX_AI_PROJECT","VERTEX_AI_LOCATION"]
+  keys=["SHZ_LLM_PROVIDER","SHZ_LLM_BASE_URL","SHZ_LLM_MODEL","SHZ_FREE_MODE","SHZ_NO_ACCOUNT_MODE","SHZ_SETUP_COMPLETED","VERTEX_AI_PROJECT","VERTEX_AI_LOCATION"]
   path=os.path.join(data_dir(),".env")
   temporary=path+".tmp"
   try:
@@ -293,7 +330,10 @@ class Window(QMainWindow):
   from utils.provider_config import validate_provider_config
   provider=os.environ.get("SHZ_LLM_PROVIDER","gemini")
   ready,_=validate_provider_config(provider)
-  if not ready:QTimer.singleShot(350,self.open_setup_wizard)
+  no_account=os.environ.get("SHZ_NO_ACCOUNT_MODE","").strip().lower() in {"1","true","yes","on"}
+  setup_completed=os.environ.get("SHZ_SETUP_COMPLETED","").strip().lower() in {"1","true","yes","on"}
+  if no_account:self.activate_no_account_mode()
+  elif not setup_completed or not ready:QTimer.singleShot(350,self.open_setup_wizard)
  def open_setup_wizard(self):
   dialog=Settings(self)
   dialog.exec()
@@ -306,6 +346,13 @@ class Window(QMainWindow):
    self.model.setEditable(True)
    self.model.setCurrentText(os.environ.get("SHZ_LLM_MODEL",self.model.currentText()))
    self.plot.setEnabled(True)
+ def activate_no_account_mode(self,switch_tab=True):
+  os.environ["SHZ_NO_ACCOUNT_MODE"]="true"
+  self.go.setEnabled(False)
+  self.go.setToolTip("در گزینهٔ بدون ثبت‌نام، فقط جست‌وجو و گردآوری منابع علمی فعال است؛ برای نگارش با هوش مصنوعی باید گزینهٔ اتصال هوش مصنوعی را انتخاب کنید.")
+  self.plot.setChecked(False); self.plot.setEnabled(False)
+  self.literature_status.setText("حالت سوم فعال است: جست‌وجوی علمی بدون حساب، کلید API یا پرداخت. تولید متن با هوش مصنوعی غیرفعال است.")
+  if switch_tab:self.tabs.setCurrentIndex(1)
  def show_literature_tab(self):
   self.tabs.setCurrentIndex(1)
  def search_literature(self):
@@ -340,6 +387,8 @@ class Window(QMainWindow):
   p=os.path.join(root_dir(),"templates")
   return sorted(x for x in os.listdir(p) if os.path.isfile(os.path.join(p,x,"template.tex"))) if os.path.isdir(p) else ["cvpr2025","iclr2025"]
  def start(self):
+  if os.environ.get("SHZ_NO_ACCOUNT_MODE","").strip().lower() in {"1","true","yes","on"}:
+   QMessageBox.information(self,"حالت جستجوی بدون ثبت‌نام","در گزینهٔ سوم، جست‌وجو و گردآوری منابع علمی رایگان است؛ تولید مقاله با هوش مصنوعی نیازمند انتخاب یکی از دو حالت اتصال هوش مصنوعی است."); return
   project_title=self.name.text().strip(); idea=self.idea.toPlainText().strip(); notes=self.notes.toPlainText().strip()
   idea_was_generated = not bool(idea)
   if not project_title: QMessageBox.warning(self,"نام پروژه لازم است","ابتدا نام پروژه را وارد کنید."); return
