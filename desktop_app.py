@@ -16,8 +16,8 @@ def worker():
   if stream is not sys.stdout: stream.close()
 if __name__=="__main__" and len(sys.argv)>1 and sys.argv[1]=="--worker": raise SystemExit(worker())
 from PySide6.QtCore import QProcess,QTimer,Qt,QProcessEnvironment,QThread,Signal
-from PySide6.QtGui import QFont, QDesktopServices
-from PySide6.QtCore import QUrl
+from PySide6.QtGui import QFont, QDesktopServices, QPdfWriter, QTextDocument, QPageSize
+from PySide6.QtCore import QUrl, QMarginsF
 from PySide6.QtWidgets import *
 APP="SHZ PaperOrchestra"
 def data_dir():
@@ -277,6 +277,19 @@ class LiteratureSearchWorker(QThread):
   except Exception as exc:
    self.results_ready.emit([],"خطا در جستجوی منابع: "+str(exc))
 
+class ProposalWorker(QThread):
+ progress=Signal(str)
+ results_ready=Signal(object,object,str)
+ def __init__(self,topic,metadata,cutoff):
+  super().__init__(); self.topic=topic; self.metadata=metadata; self.cutoff=cutoff
+ def run(self):
+  try:
+   from utils.proposal_builder import generate_proposal
+   data,sources=generate_proposal(self.topic,self.metadata,self.cutoff,20,self.progress.emit)
+   self.results_ready.emit(data,sources,"")
+  except Exception as exc:
+   self.results_ready.emit(None,[],str(exc))
+
 class Window(QMainWindow):
  def __init__(self):
   super().__init__(); self.setWindowTitle(APP); self.resize(1080,760); self.proc=None; self.log_path=None; self.offset=0
@@ -323,6 +336,53 @@ class Window(QMainWindow):
   self.literature_results=QListWidget(); self.literature_results.itemDoubleClicked.connect(self.open_literature_result); rv.addWidget(self.literature_results,1)
   rv.addWidget(QLabel("برای بازکردن صفحه مقاله، روی نتیجه دوبار کلیک کنید."))
   tabs.addTab(research,"جستجوی مقالات رایگان")
+  # Research proposal completion based on the uploaded Shiraz Azad form.
+  proposal=QWidget(); proposal_outer=QVBoxLayout(proposal); proposal_scroll=QScrollArea(); proposal_scroll.setWidgetResizable(True)
+  proposal_body=QWidget(); proposal_form=QVBoxLayout(proposal_body)
+  proposal_form.addWidget(QLabel("موضوع پژوهش را وارد کنید؛ برنامه منابع علمی را جستجو می‌کند و پیش‌نویس بخش‌های فرم ۱۰ دانشگاه آزاد واحد شیراز را با ارجاع به منابع می‌سازد."))
+  pf=QGridLayout()
+  self.proposal_topic=QLineEdit(); self.proposal_topic.setPlaceholderText("موضوع یا عنوان اولیه پژوهش")
+  self.proposal_field=QLineEdit(); self.proposal_field.setPlaceholderText("رشته تحصیلی")
+  self.proposal_specialization=QLineEdit(); self.proposal_specialization.setPlaceholderText("گرایش")
+  self.proposal_degree=QComboBox(); self.proposal_degree.addItems(["کارشناسی ارشد","دکتری تخصصی","دکتری حرفه‌ای"])
+  self.proposal_student=QLineEdit(); self.proposal_student.setPlaceholderText("نام دانشجو (اختیاری)")
+  self.proposal_student_number=QLineEdit(); self.proposal_student_number.setPlaceholderText("شماره دانشجویی (اختیاری)")
+  self.proposal_college=QLineEdit(); self.proposal_college.setPlaceholderText("دانشکده")
+  self.proposal_supervisor=QLineEdit(); self.proposal_supervisor.setPlaceholderText("استاد راهنما")
+  self.proposal_advisor=QLineEdit(); self.proposal_advisor.setPlaceholderText("استاد مشاور")
+  self.proposal_credits=QLineEdit(); self.proposal_credits.setPlaceholderText("تعداد واحد پایان‌نامه")
+  self.proposal_method=QComboBox(); self.proposal_method.addItems(["پیشنهاد روش متناسب با موضوع","کمی","کیفی","آمیخته","مروری / کتابخانه‌ای","نظری"])
+  self.proposal_population=QLineEdit(); self.proposal_population.setPlaceholderText("جامعه یا میدان پژوهش، در صورت مشخص بودن")
+  self.proposal_cutoff=QLineEdit(); self.proposal_cutoff.setPlaceholderText("سال آخر منابع، مثلاً 2026")
+  for label,widget,r,c in [
+   ("موضوع پژوهش",self.proposal_topic,0,0),("رشته",self.proposal_field,1,0),("گرایش",self.proposal_specialization,1,1),
+   ("مقطع",self.proposal_degree,2,0),("روش ترجیحی",self.proposal_method,2,1),("دانشجو",self.proposal_student,3,0),
+   ("شماره دانشجویی",self.proposal_student_number,3,1),("دانشکده",self.proposal_college,4,0),
+   ("استاد راهنما",self.proposal_supervisor,4,1),("استاد مشاور",self.proposal_advisor,5,0),
+   ("تعداد واحد",self.proposal_credits,5,1),("جامعه/میدان پژوهش",self.proposal_population,6,0),
+   ("سال آخر منابع",self.proposal_cutoff,6,1)]:
+   pf.addWidget(QLabel(label),r,c*2); pf.addWidget(widget,r,c*2+1)
+  proposal_form.addLayout(pf)
+  proposal_form.addWidget(QLabel("توضیحات تکمیلی: مسئله، متغیرها، محل اجرا، محدودیت‌ها یا اطلاعاتی که باید در تدوین لحاظ شوند"))
+  self.proposal_context=QPlainTextEdit(); self.proposal_context.setMaximumHeight(110)
+  self.proposal_context.setPlaceholderText("اطلاعات واقعی را وارد کنید. موارد نامعلوم حدس زده نمی‌شوند.")
+  proposal_form.addWidget(self.proposal_context)
+  proposal_buttons=QHBoxLayout()
+  self.proposal_generate=QPushButton("جستجوی منابع و تکمیل پروپوزال")
+  self.proposal_generate.clicked.connect(self.generate_proposal_clicked)
+  self.proposal_export_docx=QPushButton("خروجی Word"); self.proposal_export_docx.setEnabled(False); self.proposal_export_docx.clicked.connect(self.export_proposal_word)
+  self.proposal_export_pdf=QPushButton("خروجی PDF"); self.proposal_export_pdf.setEnabled(False); self.proposal_export_pdf.clicked.connect(self.export_proposal_pdf)
+  self.proposal_export_md=QPushButton("خروجی Markdown"); self.proposal_export_md.setEnabled(False); self.proposal_export_md.clicked.connect(self.export_proposal_markdown)
+  proposal_buttons.addWidget(self.proposal_generate); proposal_buttons.addWidget(self.proposal_export_docx); proposal_buttons.addWidget(self.proposal_export_pdf); proposal_buttons.addWidget(self.proposal_export_md)
+  proposal_form.addLayout(proposal_buttons)
+  self.proposal_status=QLabel("برای تولید پیش‌نویس، اتصال هوش مصنوعی را در گزینهٔ اول یا دوم راه‌اندازی کنید. جستجوی منابع از پایگاه‌های عمومی و بدون کلید API انجام می‌شود.")
+  self.proposal_status.setWordWrap(True); proposal_form.addWidget(self.proposal_status)
+  self.proposal_progress=QProgressBar(); self.proposal_progress.setRange(0,1); self.proposal_progress.setValue(0); proposal_form.addWidget(self.proposal_progress)
+  self.proposal_preview=QPlainTextEdit(); self.proposal_preview.setReadOnly(True); self.proposal_preview.setPlaceholderText("پیش‌نمایش پروپوزال پس از تکمیل در این قسمت نمایش داده می‌شود.")
+  proposal_form.addWidget(self.proposal_preview,1)
+  proposal_scroll.setWidget(proposal_body); proposal_outer.addWidget(proposal_scroll)
+  self.proposal_data=None; self.proposal_worker=None
+  tabs.addTab(proposal,"تکمیل پروپوزال")
   q=QWidget(); qv=QVBoxLayout(q); self.status=QLabel("آماده"); self.bar=QProgressBar(); self.bar.setRange(0,5); self.output=QPlainTextEdit(); self.output.setReadOnly(True)
   self.open=QPushButton("باز کردن پوشه خروجی"); self.open.setEnabled(False); self.open.clicked.connect(lambda:os.startfile(self.run_dir) if self.run_dir else None)
   qv.addWidget(self.status); qv.addWidget(self.bar); qv.addWidget(self.output,1); qv.addWidget(self.open); tabs.addTab(q,"گزارش اجرا"); v.addWidget(tabs); self.setCentralWidget(w); self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
@@ -388,6 +448,79 @@ class Window(QMainWindow):
  def open_literature_result(self,item):
   url=item.data(Qt.ItemDataRole.UserRole)
   if url: QDesktopServices.openUrl(QUrl(url))
+ def generate_proposal_clicked(self):
+  if os.environ.get("SHZ_NO_ACCOUNT_MODE","").strip().lower() in {"1","true","yes","on"}:
+   QMessageBox.information(self,"نیاز به اتصال هوش مصنوعی","گزینهٔ سوم فقط جستجوی علمی بدون ثبت‌نام است و تولید متن هوش مصنوعی ندارد. برای تکمیل خودکار فرم، گزینهٔ اول یا دوم را در راه‌اندازی انتخاب کنید."); return
+  topic=self.proposal_topic.text().strip()
+  if not topic:
+   QMessageBox.warning(self,"موضوع لازم است","موضوع پژوهش را وارد کنید."); return
+  from utils.provider_config import validate_provider_config
+  provider=os.environ.get("SHZ_LLM_PROVIDER","gemini")
+  valid,message=validate_provider_config(provider)
+  if not valid:
+   QMessageBox.warning(self,"تنظیمات اتصال",message+"\nابتدا اتصال هوش مصنوعی را از راهنمای راه‌اندازی تنظیم کنید."); return
+  metadata={
+   "degree":self.proposal_degree.currentText(),"field":self.proposal_field.text().strip(),
+   "specialization":self.proposal_specialization.text().strip(),"student":self.proposal_student.text().strip(),
+   "student_number":self.proposal_student_number.text().strip(),"college":self.proposal_college.text().strip(),
+   "supervisor":self.proposal_supervisor.text().strip(),"advisor":self.proposal_advisor.text().strip(),
+   "credits":self.proposal_credits.text().strip(),"preferred_method":self.proposal_method.currentText(),
+   "population_hint":self.proposal_population.text().strip(),"additional_context":self.proposal_context.toPlainText().strip(),
+  }
+  self.proposal_generate.setEnabled(False); self.proposal_export_docx.setEnabled(False); self.proposal_export_pdf.setEnabled(False); self.proposal_export_md.setEnabled(False)
+  self.proposal_progress.setRange(0,0); self.proposal_status.setText("در حال شروع جستجو و تدوین…"); self.proposal_preview.clear()
+  self.proposal_worker=ProposalWorker(topic,metadata,self.proposal_cutoff.text().strip() or None)
+  self.proposal_worker.progress.connect(self.proposal_status.setText)
+  self.proposal_worker.results_ready.connect(self.on_proposal_ready)
+  self.proposal_worker.start()
+ def on_proposal_ready(self,data,sources,error):
+  self.proposal_progress.setRange(0,1); self.proposal_progress.setValue(1); self.proposal_generate.setEnabled(True)
+  if error:
+   self.proposal_status.setText("تکمیل پروپوزال ناموفق بود: "+error); return
+  self.proposal_data=data
+  sections=[
+   ("عنوان",data.get("title_fa","")),("عنوان انگلیسی",data.get("title_en","")),
+   ("بیان مسئله",data.get("problem_statement","")),("اهمیت و ضرورت",data.get("significance","")),
+   ("مرور ادبیات",data.get("literature_review","")),("نوآوری",data.get("novelty","")),
+   ("اهداف",data.get("objectives","")),("پرسش‌ها",data.get("research_questions","")),
+   ("فرضیه‌ها",data.get("hypotheses","")),("روش‌شناسی",data.get("method_type","")+"\n"+data.get("data_collection","")+"\n"+data.get("analysis_method","")),
+   ("منابع", "\n".join(f"[{x.get('id')}] {x.get('title')} ({x.get('year')}) — {x.get('url')}" for x in sources)),
+  ]
+  self.proposal_preview.setPlainText("\n\n".join(title+"\n"+body for title,body in sections))
+  self.proposal_status.setText(f"پیش‌نویس آماده شد؛ {len(sources)} رکورد منبع بازیابی شد. منابع و متن باید پیش از ثبت بررسی شوند.")
+  self.proposal_export_docx.setEnabled(True); self.proposal_export_pdf.setEnabled(True); self.proposal_export_md.setEnabled(True)
+ def export_proposal_word(self):
+  if not self.proposal_data:return
+  path,_=QFileDialog.getSaveFileName(self,"ذخیره پروپوزال Word","پروپوزال.docx","Word (*.docx)")
+  if not path:return
+  if not path.lower().endswith(".docx"):path+=".docx"
+  try:
+   from utils.proposal_export import export_proposal_docx
+   export_proposal_docx(self.proposal_data,path)
+   self.proposal_status.setText("فایل Word ذخیره شد: "+path)
+  except Exception as exc:QMessageBox.critical(self,"خطا در خروجی Word",str(exc))
+ def export_proposal_pdf(self):
+  if not self.proposal_data:return
+  path,_=QFileDialog.getSaveFileName(self,"ذخیره پروپوزال PDF","پروپوزال.pdf","PDF (*.pdf)")
+  if not path:return
+  if not path.lower().endswith(".pdf"):path+=".pdf"
+  try:
+   from utils.proposal_export import proposal_html
+   writer=QPdfWriter(path); writer.setPageSize(QPageSize(QPageSize.PageSizeId.A4)); writer.setResolution(96)
+   from PySide6.QtGui import QTextDocument
+   doc=QTextDocument(); doc.setDefaultFont(QFont("Arial",10)); doc.setHtml(proposal_html(self.proposal_data)); doc.print_(writer)
+   self.proposal_status.setText("فایل PDF ذخیره شد: "+path)
+  except Exception as exc:QMessageBox.critical(self,"خطا در خروجی PDF",str(exc))
+ def export_proposal_markdown(self):
+  if not self.proposal_data:return
+  path,_=QFileDialog.getSaveFileName(self,"ذخیره پروپوزال Markdown","پروپوزال.md","Markdown (*.md)")
+  if not path:return
+  if not path.lower().endswith(".md"):path+=".md"
+  try:
+   from utils.proposal_export import proposal_markdown
+   with open(path,"w",encoding="utf-8") as f:f.write(proposal_markdown(self.proposal_data))
+   self.proposal_status.setText("فایل Markdown ذخیره شد: "+path)
+  except Exception as exc:QMessageBox.critical(self,"خطا در خروجی Markdown",str(exc))
  def templates(self):
   p=os.path.join(root_dir(),"templates")
   return sorted(x for x in os.listdir(p) if os.path.isfile(os.path.join(p,x,"template.tex"))) if os.path.isdir(p) else ["cvpr2025","iclr2025"]
