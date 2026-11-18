@@ -338,6 +338,7 @@ class Window(QMainWindow):
  def open_setup_wizard(self):
   dialog=Settings(self)
   dialog.exec()
+  self.go.setEnabled(True); self.go.setToolTip("")
   no_account=os.environ.get("SHZ_NO_ACCOUNT_MODE","").strip().lower() in {"1","true","yes","on"}
   free_mode=os.environ.get("SHZ_FREE_MODE","").strip().lower() in {"1","true","yes","on"}
   if no_account:
