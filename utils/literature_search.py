@@ -79,7 +79,7 @@ def _search_openalex(query: str, cutoff_year: int | None, limit: int,
         params={
             "search": query,
             "per-page": min(max(limit, 1), 25),
-            "select": "id,doi,display_name,publication_year,cited_by_count,open_access,best_oa_location",
+            "select": "id,doi,display_name,publication_year,cited_by_count,open_access,best_oa_location,authorships,primary_location",
         },
         headers=headers,
         timeout=TIMEOUT,
@@ -110,7 +110,7 @@ def _search_crossref(query: str, cutoff_year: int | None, limit: int,
         params={
             "query.bibliographic": query,
             "rows": min(max(limit, 1), 25),
-            "select": "title,DOI,published-print,published-online,published,created",
+            "select": "title,DOI,published-print,published-online,published,created,author,container-title,volume,issue,page",
         },
         headers=headers,
         timeout=TIMEOUT,
@@ -229,8 +229,8 @@ def search_academic_candidates(
     selected = set(sources or ["openalex", "crossref", "europepmc", "arxiv"])
     adapters = [
         ("openalex", _search_openalex),
-        ("crossref", _search_crossref),
         ("europepmc", _search_europe_pmc),
+        ("crossref", _search_crossref),
         ("arxiv", _search_arxiv),
     ]
     for source, adapter in adapters:
