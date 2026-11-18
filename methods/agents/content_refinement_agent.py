@@ -33,7 +33,7 @@ class ContentRefinementAgent:
         experimental_log_path: str,
         citation_map_path: str,
         guidelines_path: str,
-        model_name: str = "gemini-2.5-flash-lite-lite",
+        model_name: str = "gemini-2.5-flash-lite",
         max_reflections: int = 3,
         work_dir: str = "./paper_workspace",
     ):
