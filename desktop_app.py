@@ -190,7 +190,7 @@ class Window(QMainWindow):
   self.cutoff=QLineEdit(); self.cutoff.setPlaceholderText("2026-11"); self.plot=QCheckBox("فعال‌سازی عامل تولید شکل و نمودار"); self.plot.setChecked(True)
   for args in [(QLabel("نام پروژه"),0,0),(self.name,0,1),(QLabel("قالب"),0,2),(self.template,0,3),(QLabel("مدل"),1,0),(self.model,1,1),(QLabel("تاریخ قطع منابع"),1,2),(self.cutoff,1,3),(self.plot,2,1)]: f.addWidget(*args)
   pv.addWidget(g); row=QHBoxLayout(); a=QGroupBox("ایده پژوهش"); al=QVBoxLayout(a); self.idea=QPlainTextEdit(); self.idea.setPlaceholderText("ایده، مسئله، پرسش و نوآوری پژوهش…"); al.addWidget(self.idea)
-  b=QGroupBox("گزارش آزمایش"); bl=QVBoxLayout(b); self.notes=QPlainTextEdit(); self.notes.setPlaceholderText("روش، داده‌ها، نتایج و مشاهدات…"); bl.addWidget(self.notes); row.addWidget(a); row.addWidget(b); pv.addLayout(row,1)
+  b=QGroupBox("گزارش آزمایش (اختیاری)"); bl=QVBoxLayout(b); self.notes=QPlainTextEdit(); self.notes.setPlaceholderText("اگر آزمایش انجام داده‌اید، روش، داده‌ها، نتایج و مشاهدات را وارد کنید. اگر هنوز داده‌ای ندارید، این قسمت را خالی بگذارید؛ برنامه مقاله را بدون ادعای نتایج تجربی آماده می‌کند."); bl.addWidget(self.notes); row.addWidget(a); row.addWidget(b); pv.addLayout(row,1)
   buttons=QHBoxLayout(); s=QPushButton("راهنمای گام‌به‌گام اتصال هوش مصنوعی"); s.clicked.connect(self.open_setup_wizard)
   self.go=QPushButton("شروع تولید مقاله"); self.go.clicked.connect(self.start); self.stop=QPushButton("توقف"); self.stop.setEnabled(False); self.stop.clicked.connect(self.cancel)
   buttons.addWidget(s); buttons.addStretch(); buttons.addWidget(self.stop); buttons.addWidget(self.go); pv.addLayout(buttons); tabs.addTab(p,"پروژه جدید")
@@ -212,7 +212,7 @@ class Window(QMainWindow):
   return sorted(x for x in os.listdir(p) if os.path.isfile(os.path.join(p,x,"template.tex"))) if os.path.isdir(p) else ["cvpr2025","iclr2025"]
  def start(self):
   idea=self.idea.toPlainText().strip(); notes=self.notes.toPlainText().strip()
-  if not self.name.text().strip() or not idea or not notes: QMessageBox.warning(self,"اطلاعات ناقص","نام پروژه، ایده و گزارش آزمایش لازم است."); return
+  if not self.name.text().strip() or not idea: QMessageBox.warning(self,"اطلاعات ناقص","نام پروژه و ایده پژوهش را وارد کنید. گزارش آزمایش اختیاری است."); return
   ep=os.path.join(data_dir(),".env")
   if os.path.isfile(ep):
    from dotenv import load_dotenv; load_dotenv(ep,override=True)
@@ -227,7 +227,10 @@ class Window(QMainWindow):
   safe="".join(c if c.isalnum() or c in "-_ " else "_" for c in self.name.text()).strip().replace(" ","_")
   base=os.path.join(os.path.expanduser("~"),"Documents",APP,"Projects"); os.makedirs(base,exist_ok=True)
   self.run_dir=os.path.join(base,safe+"_"+datetime.now().strftime("%Y%m%d_%H%M%S")); raw=os.path.join(self.run_dir,"raw_materials"); os.makedirs(os.path.join(raw,"figures"),exist_ok=True)
-  open(os.path.join(raw,"idea_sparse.md"),"w",encoding="utf-8").write(idea); open(os.path.join(raw,"experimental_log.md"),"w",encoding="utf-8").write(notes)
+  open(os.path.join(raw,"idea_sparse.md"),"w",encoding="utf-8").write(idea);\n  if not notes:\n   notes=("No experimental data, methods, or results have been provided at this stage. "
+          "Treat this as a proposal, conceptual, or literature-review paper as appropriate. "
+          "Do not invent experiments, measurements, datasets, statistical results, or empirical findings. "
+          "Clearly distinguish proposed future work from completed research.")\n  open(os.path.join(raw,"experimental_log.md"),"w",encoding="utf-8").write(notes)
   self.log_path=os.path.join(self.run_dir,"desktop-run.log"); self.offset=0; self.output.clear(); self.bar.setValue(0)
   args=["--worker","--raw_materials_dir",raw,"--output_dir",self.run_dir,"--latex_template_dir",os.path.join(root_dir(),"templates",self.template.currentText()),"--writer_model_name",self.model.currentText(),"--reflection_model_name",self.model.currentText(),"--idea_filename","idea_sparse.md","--experimental_log_filename","experimental_log.md"]
   if self.cutoff.text().strip():args+=["--research_cutoff",self.cutoff.text().strip()]
