@@ -46,9 +46,10 @@ def load_md_file(md_file_path: str):
         print(
             f"Error! Markdown file not found at '{md_file_path}', use empty string..."
         )
-        return None
+        return ""
 
-    with open(md_file_path, "r") as f:
-        prompt_content = f.read()
-
-    return prompt_content
+    # Project inputs are written as UTF-8 by the Windows desktop app. Never
+    # rely on the machine's ANSI code page (cp1252/mbcs), which cannot decode
+    # many Persian and other Unicode characters.
+    with open(md_file_path, "r", encoding="utf-8-sig") as f:
+        return f.read()
