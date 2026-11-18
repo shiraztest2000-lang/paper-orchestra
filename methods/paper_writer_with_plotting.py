@@ -445,7 +445,7 @@ def run_batch_writeup(
     writer_model_name: str = "gemini-3.1-pro-preview",
     plotting_model_name: str = "gemini-3.1-pro-preview",
     image_model_name: str = "gemini-3-pro-image-preview",
-    plotting_max_critic_rounds: int = 3,
+    plotting_max_critic_rounds: int = 1,
     research_cutoff: str = "2024-11",
     n_papers=-1,
     max_workers=4,
