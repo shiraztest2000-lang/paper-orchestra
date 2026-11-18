@@ -399,6 +399,7 @@ class Window(QMainWindow):
   dialog=Settings(self)
   dialog.exec()
   self.go.setEnabled(True); self.go.setToolTip("")
+  self.proposal_generate.setEnabled(True); self.proposal_generate.setToolTip("")
   no_account=os.environ.get("SHZ_NO_ACCOUNT_MODE","").strip().lower() in {"1","true","yes","on"}
   free_mode=os.environ.get("SHZ_FREE_MODE","").strip().lower() in {"1","true","yes","on"}
   if no_account:
@@ -415,6 +416,9 @@ class Window(QMainWindow):
   os.environ["SHZ_NO_ACCOUNT_MODE"]="true"
   self.go.setEnabled(False)
   self.go.setToolTip("در گزینهٔ بدون ثبت‌نام، فقط جست‌وجو و گردآوری منابع علمی فعال است؛ برای نگارش با هوش مصنوعی باید گزینهٔ اتصال هوش مصنوعی را انتخاب کنید.")
+  self.proposal_generate.setEnabled(False)
+  self.proposal_generate.setToolTip("تولید متن پروپوزال به مدل هوش مصنوعی نیاز دارد؛ گزینهٔ اول یا دوم را انتخاب کنید.")
+  self.proposal_status.setText("گزینهٔ سوم فعال است: جستجوی منابع رایگان و بدون ثبت‌نام در دسترس است؛ برای تکمیل خودکار پروپوزال، اتصال هوش مصنوعی را فعال کنید.")
   self.plot.setChecked(False); self.plot.setEnabled(False)
   self.literature_status.setText("حالت سوم فعال است: جست‌وجوی علمی بدون حساب، کلید API یا پرداخت. تولید متن با هوش مصنوعی غیرفعال است.")
   if switch_tab:self.tabs.setCurrentIndex(1)
