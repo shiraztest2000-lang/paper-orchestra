@@ -482,15 +482,8 @@ class Window(QMainWindow):
   if error:
    self.proposal_status.setText("تکمیل پروپوزال ناموفق بود: "+error); return
   self.proposal_data=data
-  sections=[
-   ("عنوان",data.get("title_fa","")),("عنوان انگلیسی",data.get("title_en","")),
-   ("بیان مسئله",data.get("problem_statement","")),("اهمیت و ضرورت",data.get("significance","")),
-   ("مرور ادبیات",data.get("literature_review","")),("نوآوری",data.get("novelty","")),
-   ("اهداف",data.get("objectives","")),("پرسش‌ها",data.get("research_questions","")),
-   ("فرضیه‌ها",data.get("hypotheses","")),("روش‌شناسی",data.get("method_type","")+"\n"+data.get("data_collection","")+"\n"+data.get("analysis_method","")),
-   ("منابع", "\n".join(f"[{x.get('id')}] {x.get('title')} ({x.get('year')}) — {x.get('url')}" for x in sources)),
-  ]
-  self.proposal_preview.setPlainText("\n\n".join(title+"\n"+body for title,body in sections))
+  from utils.proposal_export import proposal_markdown
+  self.proposal_preview.setPlainText(proposal_markdown(data))
   self.proposal_status.setText(f"پیش‌نویس آماده شد؛ {len(sources)} رکورد منبع بازیابی شد. منابع و متن باید پیش از ثبت بررسی شوند.")
   self.proposal_export_docx.setEnabled(True); self.proposal_export_pdf.setEnabled(True); self.proposal_export_md.setEnabled(True)
  def export_proposal_word(self):
