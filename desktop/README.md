@@ -22,10 +22,10 @@ Most providers require the user to create an account and provide their own API k
 
 1. Create a free account with Google AI Studio or OpenRouter.
 2. Create an API key in that provider's dashboard.
-3. In the app, open **تنظیم اتصال هوش مصنوعی** and select Gemini or OpenRouter.
-4. Enter the matching API key and save.
+3. In the app, open **راهنمای گام‌به‌گام اتصال هوش مصنوعی** and select Gemini or OpenRouter.
+4. Enter the matching API key in the wizard.
 5. For OpenRouter, use a currently available free model ID (usually ending in `:free`) or try `openrouter/free`. Free model availability can change.
-6. Use **آزمایش اتصال** for OpenAI-compatible providers and **دریافت فهرست مدل‌ها** to populate the model list. Gemini model names can be entered manually in this build.
+6. Run the wizard's connection test. For Gemini, the app retrieves models that advertise `generateContent`; for OpenAI-compatible providers, it queries the provider's `/models` endpoint. The wizard enables saving only after a successful test.
 
 Official provider information:
 - Google Gemini API pricing and free tier: https://ai.google.dev/gemini-api/docs/pricing
