@@ -2,6 +2,7 @@ import os
 import unittest
 from unittest.mock import patch
 
+from utils.literature_search import _clean_title
 from utils.provider_config import (
     get_base_url, get_provider, is_local_provider,
     is_openai_compatible, validate_provider_config,
@@ -108,6 +109,9 @@ class ProviderConfigTests(unittest.TestCase):
         with patch.dict(os.environ, env, clear=True):
             self.assertTrue(validate_provider_config()[0])
             self.assertEqual(get_base_url(), "https://api.example.test/v1")
+
+    def test_scholarly_title_whitespace_is_normalized(self):
+        self.assertEqual(_clean_title("  A\\n\\t  useful   paper  "), "A useful paper")
 
     def test_custom_remote_http_endpoint_is_rejected(self):
         env = {
