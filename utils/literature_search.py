@@ -39,7 +39,7 @@ def _add_candidate(found: dict, title: str, year, source: str,
     title = _clean_title(title)
     try:
         if isinstance(year, str):
-            match = re.match(r"\\s*(\\d{4})", year)
+            match = re.match(r"\s*(\d{4})", year)
             year = int(match.group(1)) if match else int(year)
         else:
             year = int(year)
