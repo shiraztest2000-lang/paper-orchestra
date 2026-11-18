@@ -194,29 +194,51 @@ def proposal_markdown(data):
 
 def proposal_html(data):
     esc = html.escape
-    parts = ['<html><head><meta charset="utf-8"><style>body{font-family:Arial,"Tahoma";direction:rtl;text-align:right;font-size:11pt;line-height:1.8}h1,h2{color:#17365d}table{width:100%;border-collapse:collapse}td,th{border:1px solid #777;padding:5px;text-align:right} .ltr{direction:ltr;text-align:left}</style></head><body>']
-    parts.append("<h1>دانشگاه آزاد اسلامی ـ واحد شیراز</h1><h2>" + esc(data.get("title_fa") or "پیش‌نویس پروپوزال") + "</h2>")
-    parts.append("<p class='ltr'>" + esc(data.get("title_en", "")) + "</p>")
+    parts = ['<html><head><meta charset="utf-8"><style>@page{size:A4;margin:18mm}body{font-family:Arial,"Tahoma";direction:rtl;text-align:right;font-size:10pt;line-height:1.7}h1,h2{color:#17365d}h2{font-size:13pt;border-bottom:1px solid #bbb;padding-bottom:3px}table{width:100%;border-collapse:collapse;margin:8px 0 18px}td,th{border:1px solid #777;padding:5px;text-align:right;vertical-align:top} .ltr{direction:ltr;text-align:left}</style></head><body>']
+    def para(value):
+        return esc(str(value or "نیازمند تکمیل")).replace("\n", "<br>")
+    parts.append("<h1>دانشگاه آزاد اسلامی ـ واحد شیراز</h1><h2>فرم طرح تحقیق پایان‌نامه</h2>")
+    parts.append("<h2>" + para(data.get("title_fa") or "پیش‌نویس پروپوزال") + "</h2>")
+    parts.append("<p class='ltr'>" + para(data.get("title_en", "")) + "</p>")
+    parts.append("<h2>۱ تا ۳. اطلاعات دانشجو و استادان</h2><table>")
+    for label, key in [("نام دانشجو","student"),("شماره دانشجویی","student_number"),
+        ("مقطع","degree"),("رشته","field"),("گرایش","specialization"),
+        ("دانشکده","college"),("استاد راهنما","supervisor"),("استاد مشاور","advisor"),
+        ("تعداد واحد","credits")]:
+        parts.append("<tr><th>" + label + "</th><td>" + para(data.get(key, "")) + "</td></tr>")
+    parts.append("</table>")
     labels = [
-        ("problem_statement","بیان مسئله"),("significance","اهمیت و ضرورت"),
-        ("literature_review","مرور ادبیات و سوابق"),("novelty","نوآوری"),
-        ("keywords_fa","کلیدواژه‌های فارسی"),("keywords_en","کلیدواژه‌های انگلیسی"),
-        ("objectives","اهداف"),("beneficiaries","بهره‌وران"),
-        ("research_questions","سؤالات"),("hypotheses","فرضیه‌ها"),
-        ("definitions","تعاریف تخصصی"),("free_pajesh","پایش آزاد"),
-        ("method_type","نوع روش تحقیق"),("data_collection","گردآوری اطلاعات"),
-        ("instruments","ابزار گردآوری"),("analysis_method","روش تحلیل"),
-        ("population_sample","جامعه و نمونه"),("inclusion_exclusion","معیارهای ورود و خروج"),
+        ("research_type","۴. نوع تحقیق"),("main_question","۴. پرسش اصلی تحقیق"),
+        ("problem_statement","۵. بیان مسئله"),("significance","۶. اهمیت و ضرورت"),
+        ("literature_review","۷. مرور ادبیات و سوابق"),("novelty","۸. نوآوری"),
+        ("keywords_fa","۹. کلیدواژه‌های فارسی"),("keywords_en","۱۰. کلیدواژه‌های انگلیسی"),
+        ("objectives","۱۱. اهداف مشخص"),("beneficiaries","۱۲. بهره‌وران"),
+        ("research_questions","۱۳. سؤالات تحقیق"),("hypotheses","۱۴. فرضیه‌ها"),
+        ("definitions","۱۵. تعاریف تخصصی"),("free_pajesh","۱۷. پایش آزاد"),
+        ("method_type","۱۹. الف) نوع روش تحقیق"),("data_collection","۱۹. ب) روش گردآوری اطلاعات"),
+        ("instruments","۱۹. ج) ابزار گردآوری اطلاعات"),("analysis_method","۱۹. د) روش تجزیه و تحلیل"),
+        ("population_sample","جامعه و نمونه پیشنهادی"),("inclusion_exclusion","معیارهای ورود و خروج"),
         ("ethical_notes","ملاحظات اخلاقی"),("limitations","محدودیت‌ها"),
     ]
     for key, label in labels:
-        text = esc(data.get(key, "") or "نیازمند تکمیل").replace("\n", "<br>")
-        parts.append("<h2>" + label + "</h2><p>" + text + "</p>")
-    parts.append("<h2>منابع</h2><ol>")
+        parts.append("<h2>" + label + "</h2><p>" + para(data.get(key, "")) + "</p>")
+    parts.append("<h2>۱۶. فهرست منابع و مآخذ</h2><ol>")
     for item in data.get("references", []):
         authors = ", ".join(item.get("authors") or [])
         ref = f"{authors} ({item.get('year','')}). {item.get('title','')}. {item.get('venue','')}."
         url = item.get("url") or ""
         parts.append("<li>" + esc(ref) + ((" <a href='" + esc(url) + "'>" + esc(url) + "</a>") if url else "") + "</li>")
-    parts.append("</ol><p><b>تذکر:</b> پیش‌نویس نیازمند بازبینی علمی و تکمیل فرم‌های اداری است.</p></body></html>")
+    parts.append("</ol>")
+    parts.append("<h2>۱۸. جدول زمان‌بندی</h2><table><tr><th>مرحله</th><th>از ماه</th><th>تا ماه</th></tr>")
+    for row in data.get("timeline", []):
+        if isinstance(row, dict):
+            parts.append("<tr><td>" + para(row.get("stage")) + "</td><td>" + para(row.get("start_month")) + "</td><td>" + para(row.get("end_month")) + "</td></tr>")
+    parts.append("</table><h2>۲۰. جدول متغیرها</h2><table><tr><th>عنوان متغیر</th><th>نقش</th><th>نوع</th><th>اندازه‌گیری</th><th>مقیاس</th></tr>")
+    for row in data.get("variables", []):
+        if isinstance(row, dict):
+            parts.append("<tr>" + "".join("<td>" + para(row.get(key)) + "</td>" for key in ["name","role","type","measurement","scale"]) + "</tr>")
+    parts.append("</table><h2>۲۱. هزینه‌های تحقیق</h2><p>" + para(data.get("budget_note")) + "</p>")
+    parts.append("<h2>۲۲. تأیید طرح و امضاها</h2><p>پس از بررسی حضوری تکمیل شود.</p>")
+    parts.append("<h2>۲۳. ضمایم</h2><p>فرم‌های تعهد، مشخصات تکمیلی، کدها و امضاها باید از نسخه رسمی دانشگاه تکمیل شوند.</p>")
+    parts.append("<p><b>تذکر:</b> این فایل پیش‌نویس کمکی است، نه نسخه رسمی فرم دانشگاه. پیش از ثبت، منابع و روش باید راستی‌آزمایی و بخش‌های اداری تکمیل شوند.</p></body></html>")
     return "".join(parts)
