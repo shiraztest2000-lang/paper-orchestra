@@ -35,8 +35,8 @@ def write_single_paper(
     latex_template_dir,
     idea_filename="idea_dense.md",
     experimental_log_filename="experimental_log.md",
-    writer_model_name: str = "gemini-2.5-flash-lite-lite",
-    reflection_model_name: str = "gemini-2.5-flash-lite-lite",
+    writer_model_name: str = "gemini-2.5-flash-lite",
+    reflection_model_name: str = "gemini-2.5-flash-lite",
     research_cutoff: str = "2024-11",
 ):
     latex_writeup_dir = osp.join(base_dir, "latex_writeup")
@@ -370,7 +370,7 @@ def run_batch_writeup(
     date_str: str = "",
     idea_filename: str = "idea_sparse.md",
     experimental_log_filename: str = "experimental_log.md",
-    writer_model_name: str = "gemini-2.5-flash-lite-lite",
+    writer_model_name: str = "gemini-2.5-flash-lite",
     research_cutoff: str = "2024-11",
     n_papers=-1,
     max_workers=4,
