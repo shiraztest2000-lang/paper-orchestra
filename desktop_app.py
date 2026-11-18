@@ -208,20 +208,20 @@ class Settings(QDialog):
   keys=["SHZ_LLM_PROVIDER","SHZ_LLM_BASE_URL","SHZ_LLM_MODEL","SHZ_FREE_MODE","SHZ_NO_ACCOUNT_MODE","SHZ_SETUP_COMPLETED","VERTEX_AI_PROJECT","VERTEX_AI_LOCATION"]
   path=os.path.join(data_dir(),".env"); temporary=path+".tmp"
   try:
-   with open(temporary,"w",encoding="utf-8",newline="\\n") as f:
+   with open(temporary,"w",encoding="utf-8",newline="\n") as f:
     for key in keys:
-     value=os.environ.get(key,"").replace("\\r","").replace("\\n","")
-     f.write(key+"="+value+"\\n")
+     value=os.environ.get(key,"").replace("\r","").replace("\n","")
+     f.write(key+"="+value+"\n")
     f.flush(); os.fsync(f.fileno())
    os.replace(temporary,path)
    with open(path,"r",encoding="utf-8") as f: saved=f.read()
-   if "SHZ_NO_ACCOUNT_MODE=true\\n" not in saved or "SHZ_SETUP_COMPLETED=true\\n" not in saved:
+   if "SHZ_NO_ACCOUNT_MODE=true\n" not in saved or "SHZ_SETUP_COMPLETED=true\n" not in saved:
     raise OSError("حالت جستجوی بدون ثبت‌نام پس از ذخیره‌سازی قابل تأیید نیست.")
   except Exception as exc:
    try:
     if os.path.exists(temporary): os.remove(temporary)
    except OSError: pass
-   QMessageBox.critical(self,"ذخیره تنظیمات ناموفق","حالت جستجوی رایگان ذخیره نشد؛ پنجره باز می‌ماند.\\n"+str(exc)); return
+   QMessageBox.critical(self,"ذخیره تنظیمات ناموفق","حالت جستجوی رایگان ذخیره نشد؛ پنجره باز می‌ماند.\n"+str(exc)); return
   parent=self.parent()
   if parent and hasattr(parent,"activate_no_account_mode"): parent.activate_no_account_mode(False)
   QMessageBox.information(self,"حالت رایگان فعال شد","جستجوی مقالات علمی بدون ثبت‌نام، کلید API یا پرداخت فعال شد. تولید متن با هوش مصنوعی در این حالت غیرفعال است.")
