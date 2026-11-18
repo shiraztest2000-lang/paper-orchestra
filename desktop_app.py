@@ -580,7 +580,7 @@ class Window(QMainWindow):
   self.output.appendPlainText("درخواست تولید ثبت شد؛ در حال راه‌اندازی فرایند مستقل پژوهش…")
   if idea_was_generated:
    self.output.appendPlainText("ایده پژوهش خالی بود؛ یک چارچوب اولیه بر اساس نام پروژه ساخته و در فایل ایده ذخیره شد.")
-  self.tabs.setCurrentIndex(1)
+  self.tabs.setCurrentIndex(3)
   self.go.setEnabled(False); self.stop.setEnabled(True); self.timer.start(); self.proc.start()
  def poll(self):
   if not self.log_path:return
