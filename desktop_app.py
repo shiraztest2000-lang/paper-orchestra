@@ -337,8 +337,11 @@ class Window(QMainWindow):
  def open_setup_wizard(self):
   dialog=Settings(self)
   dialog.exec()
+  no_account=os.environ.get("SHZ_NO_ACCOUNT_MODE","").strip().lower() in {"1","true","yes","on"}
   free_mode=os.environ.get("SHZ_FREE_MODE","").strip().lower() in {"1","true","yes","on"}
-  if free_mode:
+  if no_account:
+   self.activate_no_account_mode()
+  elif free_mode:
    self.model.clear(); self.model.addItem("openrouter/free"); self.model.setEditable(False)
    self.plot.setChecked(False); self.plot.setEnabled(False)
    self.plot.setToolTip("در حالت کاملاً رایگان، تولید تصویر و نمودار با سرویس‌های غیررایگان غیرفعال است.")
