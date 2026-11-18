@@ -213,6 +213,7 @@ class Window(QMainWindow):
   return sorted(x for x in os.listdir(p) if os.path.isfile(os.path.join(p,x,"template.tex"))) if os.path.isdir(p) else ["cvpr2025","iclr2025"]
  def start(self):
   project_title=self.name.text().strip(); idea=self.idea.toPlainText().strip(); notes=self.notes.toPlainText().strip()
+  idea_was_generated = not bool(idea)
   if not project_title: QMessageBox.warning(self,"نام پروژه لازم است","ابتدا نام پروژه را وارد کنید."); return
   if not idea:
    idea=(
@@ -262,7 +263,7 @@ class Window(QMainWindow):
   self.proc.setArguments(args); self.proc.setWorkingDirectory(root_dir()); self.proc.setProcessEnvironment(pe); self.proc.started.connect(self.process_started); self.proc.finished.connect(self.finished); self.proc.errorOccurred.connect(self.process_error)
   self.status.setText("در حال راه‌اندازی موتور پژوهش…"); self.bar.setRange(0,5); self.bar.setValue(0)
   self.output.appendPlainText("درخواست تولید ثبت شد؛ در حال راه‌اندازی فرایند مستقل پژوهش…")
-  if not self.idea.toPlainText().strip():
+  if idea_was_generated:
    self.output.appendPlainText("ایده پژوهش خالی بود؛ یک چارچوب اولیه بر اساس نام پروژه ساخته و در فایل ایده ذخیره شد.")
   self.tabs.setCurrentIndex(1)
   self.go.setEnabled(False); self.stop.setEnabled(True); self.timer.start(); self.proc.start()
