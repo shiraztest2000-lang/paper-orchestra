@@ -29,10 +29,11 @@ class ProposalBuilderTests(unittest.TestCase):
             "variables": [],
         }
         call.return_value = {"raw_response": json.dumps(payload, ensure_ascii=False)}
-        data, refs = generate_proposal(
-            "موضوع آزمون", {"student": "دانشجو", "field": "روانشناسی"},
-            cutoff_date="2026-11",
-        )
+        with patch.dict(os.environ, {"SHZ_LLM_MODEL": "test-model"}):
+            data, refs = generate_proposal(
+                "موضوع آزمون", {"student": "دانشجو", "field": "روانشناسی"},
+                cutoff_date="2026-11",
+            )
         self.assertEqual(data["student"], "دانشجو")
         self.assertEqual(data["title_fa"], "عنوان پیشنهادی")
         self.assertEqual(data["references"][0]["title"], "A Real Study")
