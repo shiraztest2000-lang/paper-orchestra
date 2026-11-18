@@ -370,10 +370,11 @@ class Window(QMainWindow):
   proposal_buttons=QHBoxLayout()
   self.proposal_generate=QPushButton("جستجوی منابع و تکمیل پروپوزال")
   self.proposal_generate.clicked.connect(self.generate_proposal_clicked)
+  self.proposal_approve=QPushButton("تأیید محتوای پروپوزال و آماده‌سازی خروجی"); self.proposal_approve.setEnabled(False); self.proposal_approve.clicked.connect(self.approve_proposal_for_export)
   self.proposal_export_docx=QPushButton("خروجی Word"); self.proposal_export_docx.setEnabled(False); self.proposal_export_docx.clicked.connect(self.export_proposal_word)
   self.proposal_export_pdf=QPushButton("خروجی PDF"); self.proposal_export_pdf.setEnabled(False); self.proposal_export_pdf.clicked.connect(self.export_proposal_pdf)
   self.proposal_export_md=QPushButton("خروجی Markdown"); self.proposal_export_md.setEnabled(False); self.proposal_export_md.clicked.connect(self.export_proposal_markdown)
-  proposal_buttons.addWidget(self.proposal_generate); proposal_buttons.addWidget(self.proposal_export_docx); proposal_buttons.addWidget(self.proposal_export_pdf); proposal_buttons.addWidget(self.proposal_export_md)
+  proposal_buttons.addWidget(self.proposal_generate); proposal_buttons.addWidget(self.proposal_approve); proposal_buttons.addWidget(self.proposal_export_docx); proposal_buttons.addWidget(self.proposal_export_pdf); proposal_buttons.addWidget(self.proposal_export_md)
   proposal_form.addLayout(proposal_buttons)
   self.proposal_status=QLabel("برای تولید پیش‌نویس، اتصال هوش مصنوعی را در گزینهٔ اول یا دوم راه‌اندازی کنید. جستجوی منابع از پایگاه‌های عمومی و بدون کلید API انجام می‌شود.")
   self.proposal_status.setWordWrap(True); proposal_form.addWidget(self.proposal_status)
@@ -381,7 +382,7 @@ class Window(QMainWindow):
   self.proposal_preview=QPlainTextEdit(); self.proposal_preview.setReadOnly(True); self.proposal_preview.setPlaceholderText("پیش‌نمایش پروپوزال پس از تکمیل در این قسمت نمایش داده می‌شود.")
   proposal_form.addWidget(self.proposal_preview,1)
   proposal_scroll.setWidget(proposal_body); proposal_outer.addWidget(proposal_scroll)
-  self.proposal_data=None; self.proposal_worker=None
+  self.proposal_data=None; self.proposal_worker=None; self.proposal_approved=False
   tabs.addTab(proposal,"تکمیل پروپوزال")
   q=QWidget(); qv=QVBoxLayout(q); self.status=QLabel("آماده"); self.bar=QProgressBar(); self.bar.setRange(0,5); self.output=QPlainTextEdit(); self.output.setReadOnly(True)
   self.open=QPushButton("باز کردن پوشه خروجی"); self.open.setEnabled(False); self.open.clicked.connect(lambda:os.startfile(self.run_dir) if self.run_dir else None)
@@ -471,7 +472,7 @@ class Window(QMainWindow):
    "credits":self.proposal_credits.text().strip(),"preferred_method":self.proposal_method.currentText(),
    "population_hint":self.proposal_population.text().strip(),"additional_context":self.proposal_context.toPlainText().strip(),
   }
-  self.proposal_generate.setEnabled(False); self.proposal_export_docx.setEnabled(False); self.proposal_export_pdf.setEnabled(False); self.proposal_export_md.setEnabled(False)
+  self.proposal_generate.setEnabled(False); self.proposal_approve.setEnabled(False); self.proposal_export_docx.setEnabled(False); self.proposal_export_pdf.setEnabled(False); self.proposal_export_md.setEnabled(False); self.proposal_approved=False
   self.proposal_progress.setRange(0,0); self.proposal_status.setText("در حال شروع جستجو و تدوین…"); self.proposal_preview.clear()
   self.proposal_worker=ProposalWorker(topic,metadata,self.proposal_cutoff.text().strip() or None)
   self.proposal_worker.progress.connect(self.proposal_status.setText)
@@ -484,8 +485,31 @@ class Window(QMainWindow):
   self.proposal_data=data
   from utils.proposal_export import proposal_markdown
   self.proposal_preview.setPlainText(proposal_markdown(data))
-  self.proposal_status.setText(f"پیش‌نویس آماده شد؛ {len(sources)} رکورد منبع بازیابی شد. منابع و متن باید پیش از ثبت بررسی شوند.")
+  self.proposal_status.setText(f"پیش‌نویس آماده شد؛ {len(sources)} رکورد منبع بازیابی شد. ابتدا متن را بررسی کنید؛ خروجی گرفتن فقط پس از تأیید شما فعال می‌شود.")
+  self.proposal_approve.setEnabled(True)
+ def approve_proposal_for_export(self):
+  if not self.proposal_data:return
+  answer=QMessageBox.question(self,"تأیید پروپوزال","آیا محتوای علمی پروپوزال را تأیید می‌کنید؟\n\nپس از تأیید، می‌توانید مشخصات فردی و اداری را برای درج در فایل وارد کنید یا همه آن‌ها را خالی بگذارید تا پس از چاپ تکمیل شوند.",QMessageBox.StandardButton.Yes|QMessageBox.StandardButton.No,QMessageBox.StandardButton.Yes)
+  if answer!=QMessageBox.StandardButton.Yes:return
+  details={}
+  fill=QMessageBox.question(self,"مشخصات نسخه چاپی","آیا می‌خواهید مشخصات فردی و اداری (نام، شماره دانشجویی، استادان، دانشکده، سال و تاریخ و...) را اکنون وارد کنید؟\n\nاگر «خیر» را بزنید، این قسمت‌ها در فایل خروجی کاملاً خالی می‌مانند.",QMessageBox.StandardButton.Yes|QMessageBox.StandardButton.No,QMessageBox.StandardButton.No)
+  if fill==QMessageBox.StandardButton.Yes:
+   dialog=QDialog(self); dialog.setWindowTitle("مشخصات اختیاری نسخه چاپی"); dialog.resize(460,420)
+   form=QFormLayout(dialog); fields={}
+   for key,label in [("student","نام و نام خانوادگی دانشجو"),("student_number","شماره دانشجویی"),("college","دانشکده"),("supervisor","نام استاد راهنما"),("advisor","نام استاد مشاور"),("credits","تعداد واحد پایان‌نامه"),("academic_year","سال تحصیلی"),("submission_date","تاریخ تکمیل / چاپ")]:
+    field=QLineEdit(); field.setText(str(self.proposal_data.get(key,"") or "")); fields[key]=field; form.addRow(label,field)
+   note=QLabel("تمام این موارد اختیاری‌اند. می‌توانید بعضی فیلدها را خالی بگذارید. محل امضا، مهر و تأیید دانشگاه همیشه خالی می‌ماند.")
+   note.setWordWrap(True); form.addRow(note)
+   buttons=QDialogButtonBox(QDialogButtonBox.StandardButton.Ok|QDialogButtonBox.StandardButton.Cancel); buttons.accepted.connect(dialog.accept); buttons.rejected.connect(dialog.reject); form.addRow(buttons)
+   if dialog.exec()!=QDialog.DialogCode.Accepted:return
+   details={key:field.text().strip() for key,field in fields.items()}
+  else:
+   details={key:"" for key in ["student","student_number","college","supervisor","advisor","credits","academic_year","submission_date"]}
+  self.proposal_data.update(details); self.proposal_approved=True
+  self.proposal_preview.setPlainText(__import__("utils.proposal_export",fromlist=["proposal_markdown"]).proposal_markdown(self.proposal_data))
+  self.proposal_approve.setEnabled(False)
   self.proposal_export_docx.setEnabled(True); self.proposal_export_pdf.setEnabled(True); self.proposal_export_md.setEnabled(True)
+  self.proposal_status.setText("پروپوزال تأیید شد؛ خروجی‌ها فعال شدند. مشخصات انتخاب‌شده درج شده و بخش‌های امضا و تأیید اداری خالی می‌مانند.")
  def export_proposal_word(self):
   if not self.proposal_data:return
   path,_=QFileDialog.getSaveFileName(self,"ذخیره پروپوزال Word","پروپوزال.docx","Word (*.docx)")
