@@ -35,7 +35,7 @@ def _clean_title(value: str) -> str:
 
 def _add_candidate(found: dict, title: str, year, source: str,
                    url: str = "", cutoff_year: int | None = None,
-                   detail: str = "") -> None:
+                   detail: str = "", metadata: dict | None = None) -> None:
     title = _clean_title(title)
     try:
         if isinstance(year, str):
@@ -58,6 +58,7 @@ def _add_candidate(found: dict, title: str, year, source: str,
             "source": source,
             "sources": [source],
             "url": url or "",
+            **(metadata or {}),
         }
     else:
         item = found[key]
@@ -66,6 +67,9 @@ def _add_candidate(found: dict, title: str, year, source: str,
             item["reason"] += f"; also indexed by {source}"
         if not item.get("url") and url:
             item["url"] = url
+        for field, value in (metadata or {}).items():
+            if value not in (None, "", [], {}) and not item.get(field):
+                item[field] = value
 
 
 def _search_openalex(query: str, cutoff_year: int | None, limit: int,
@@ -87,11 +91,15 @@ def _search_openalex(query: str, cutoff_year: int | None, limit: int,
         location = work.get("best_oa_location") or {}
         oa_url = location.get("landing_page_url") or location.get("pdf_url") or ""
         url = oa_url or (f"https://doi.org/{doi}" if doi else work.get("id", ""))
-        access = "open access" if oa.get("is_oa") else "full text not confirmed open"
+        access = bool(oa.get("is_oa"))
+        authors = [a.get("author", {}).get("display_name", "") for a in work.get("authorships", [])]
+        venue = (work.get("primary_location") or {}).get("source") or {}
         _add_candidate(
             found, work.get("display_name", ""), work.get("publication_year"),
             "OpenAlex", url, cutoff_year,
-            f"citations: {work.get('cited_by_count', 0)}; {access}",
+            f"citations: {work.get('cited_by_count', 0)}; {'open access' if access else 'full text not confirmed open'}",
+            {"doi": doi, "authors": [a for a in authors if a], "venue": venue.get("display_name", ""),
+             "open_access": access, "citation_count": work.get("cited_by_count", 0)},
         )
 
 
@@ -121,6 +129,10 @@ def _search_crossref(query: str, cutoff_year: int | None, limit: int,
             date_parts[0] if date_parts else None,
             "Crossref", f"https://doi.org/{doi}" if doi else "",
             cutoff_year,
+            metadata={"doi": doi, "authors": [((a.get("given", "") + " " + a.get("family", "")).strip()) for a in work.get("author", [])],
+                      "venue": (work.get("container-title") or [""])[0],
+                      "volume": work.get("volume", ""), "issue": work.get("issue", ""),
+                      "pages": work.get("page", "")},
         )
 
 
@@ -153,6 +165,9 @@ def _search_europe_pmc(query: str, cutoff_year: int | None, limit: int,
             found, work.get("title", ""),
             work.get("firstPublicationDate", work.get("pubYear")),
             "Europe PMC", url, cutoff_year, access,
+            {"doi": doi, "authors": [work.get("authorString", "")] if work.get("authorString") else [],
+             "venue": work.get("journalTitle", ""), "pmid": pmid, "pmcid": pmcid,
+             "open_access": str(work.get("isOpenAccess", "N")).upper() in {"Y", "TRUE"}},
         )
 
 
@@ -190,6 +205,7 @@ def _search_arxiv(query: str, cutoff_year: int | None, limit: int,
             found, title, year, "arXiv",
             link.text.strip() if link is not None and link.text else "",
             cutoff_year,
+            metadata={"authors": [a.findtext("atom:name", default="", namespaces=ns) for a in entry.findall("atom:author", ns)]},
         )
 
 
