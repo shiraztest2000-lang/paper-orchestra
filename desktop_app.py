@@ -15,7 +15,7 @@ def worker():
  finally:
   if stream is not sys.stdout: stream.close()
 if __name__=="__main__" and len(sys.argv)>1 and sys.argv[1]=="--worker": raise SystemExit(worker())
-from PySide6.QtCore import QProcess,QTimer,Qt,QProcessEnvironment
+from PySide6.QtCore import QProcess,QTimer,Qt,QProcessEnvironment,QThread,Signal
 from PySide6.QtGui import QFont, QDesktopServices
 from PySide6.QtCore import QUrl
 from PySide6.QtWidgets import *
@@ -53,6 +53,10 @@ class Settings(QDialog):
   lay.addWidget(self.free_mode); lay.addWidget(self.provider)
   self.free_note=QLabel("در این حالت فقط OpenRouter Free و مدل openrouter/free فعال است. برای ساخت کلید API باید حساب رایگان بسازید؛ اطلاعات کارت بانکی وارد نکنید. سقف رایگان فعلی ۵۰ درخواست در روز است. پس از اتمام سهمیه، برنامه متوقف می‌شود و به مدل پولی تغییر مسیر نمی‌دهد.")
   self.free_note.setWordWrap(True); lay.addWidget(self.free_note)
+  lay.addWidget(QLabel("گزینه مستقل و بدون ثبت‌نام: جستجوی مقاله در OpenAlex، Crossref، Europe PMC و arXiv؛ این جستجو به کلید API یا حساب کاربری نیاز ندارد و حتی بدون اتصال هوش مصنوعی قابل استفاده است."))
+  self.no_account_search=QPushButton("ورود به جستجوی مقالات رایگان، بدون ثبت‌نام")
+  self.no_account_search.clicked.connect(self.open_no_account_search)
+  lay.addWidget(self.no_account_search)
   lay.addWidget(QLabel("در حالت عادی می‌توانید سایر سرویس‌دهنده‌ها را انتخاب کنید؛ رایگان بودن آن‌ها تضمین نمی‌شود."))
   self.stack.addWidget(page)
   # Step 2: account registration.
@@ -88,6 +92,10 @@ class Settings(QDialog):
   self.free_mode.toggled.connect(self.apply_free_mode)
   self.api_key.textChanged.connect(self.invalidate_test); self.endpoint.textChanged.connect(self.invalidate_test); self.model.currentTextChanged.connect(self.invalidate_test)
   self._load_current(); self.apply_free_mode(self.free_mode.isChecked()); self.show_step(0)
+ def open_no_account_search(self):
+  parent=self.parent()
+  if parent and hasattr(parent,"show_literature_tab"): parent.show_literature_tab()
+  self.reject()
  def apply_free_mode(self, enabled):
   current=self.provider.currentData()
   if current: self._last_provider=current
@@ -219,6 +227,18 @@ class Settings(QDialog):
    "تنظیمات و کلید API در محل امن ذخیره و تنظیمات اتصال بررسی شد.\nاکنون پنجره بسته می‌شود.")
   self.accept()
 
+class LiteratureSearchWorker(QThread):
+ results_ready=Signal(object,str)
+ def __init__(self,query,cutoff,sources,limit=20):
+  super().__init__(); self.query=query; self.cutoff=cutoff; self.sources=sources; self.limit=limit
+ def run(self):
+  try:
+   from utils.literature_search import search_academic_candidates
+   results=search_academic_candidates(self.query,self.cutoff,self.limit,self.sources)
+   self.results_ready.emit(results,"")
+  except Exception as exc:
+   self.results_ready.emit([],"خطا در جستجوی منابع: "+str(exc))
+
 class Window(QMainWindow):
  def __init__(self):
   super().__init__(); self.setWindowTitle(APP); self.resize(1080,760); self.proc=None; self.log_path=None; self.offset=0
@@ -248,6 +268,23 @@ class Window(QMainWindow):
   buttons=QHBoxLayout(); s=QPushButton("راهنمای گام‌به‌گام اتصال هوش مصنوعی"); s.clicked.connect(self.open_setup_wizard)
   self.go=QPushButton("شروع تولید مقاله"); self.go.clicked.connect(self.start); self.stop=QPushButton("توقف"); self.stop.setEnabled(False); self.stop.clicked.connect(self.cancel)
   buttons.addWidget(s); buttons.addStretch(); buttons.addWidget(self.stop); buttons.addWidget(self.go); pv.addLayout(buttons); tabs.addTab(p,"پروژه جدید")
+  # No-account scholarly search is available independently of any AI provider.
+  research=QWidget(); rv=QVBoxLayout(research)
+  rv.addWidget(QLabel("جستجوی مقالات علمی از پایگاه‌های عمومی؛ بدون ساخت حساب، بدون کلید API و بدون پرداخت."))
+  rv.addWidget(QLabel("منابع: OpenAlex، Crossref، Europe PMC و arXiv. نتایج شامل اطلاعات کتاب‌شناختی و لینک منبع هستند؛ دسترسی به متن کامل به مجوز ناشر یا وضعیت دسترسی آزاد مقاله بستگی دارد."))
+  search_row=QHBoxLayout(); self.literature_query=QLineEdit(); self.literature_query.setPlaceholderText("موضوع یا کلیدواژه پژوهش را وارد کنید…")
+  self.literature_cutoff=QLineEdit(); self.literature_cutoff.setPlaceholderText("سال آخر، مثلاً 2026"); self.literature_cutoff.setMaximumWidth(130)
+  self.literature_search_button=QPushButton("جستجوی رایگان")
+  self.literature_search_button.clicked.connect(self.search_literature)
+  search_row.addWidget(self.literature_query,1); search_row.addWidget(self.literature_cutoff); search_row.addWidget(self.literature_search_button); rv.addLayout(search_row)
+  source_row=QHBoxLayout(); self.literature_sources={}
+  for key,label in [("openalex","OpenAlex"),("crossref","Crossref"),("europepmc","Europe PMC / PubMed"),("arxiv","arXiv")]:
+   check=QCheckBox(label); check.setChecked(True); self.literature_sources[key]=check; source_row.addWidget(check)
+  source_row.addStretch(); rv.addLayout(source_row)
+  self.literature_status=QLabel("آماده جستجو؛ نیازی به ثبت‌نام یا کلید API نیست."); rv.addWidget(self.literature_status)
+  self.literature_results=QListWidget(); self.literature_results.itemDoubleClicked.connect(self.open_literature_result); rv.addWidget(self.literature_results,1)
+  rv.addWidget(QLabel("برای بازکردن صفحه مقاله، روی نتیجه دوبار کلیک کنید."))
+  tabs.addTab(research,"جستجوی مقالات رایگان")
   q=QWidget(); qv=QVBoxLayout(q); self.status=QLabel("آماده"); self.bar=QProgressBar(); self.bar.setRange(0,5); self.output=QPlainTextEdit(); self.output.setReadOnly(True)
   self.open=QPushButton("باز کردن پوشه خروجی"); self.open.setEnabled(False); self.open.clicked.connect(lambda:os.startfile(self.run_dir) if self.run_dir else None)
   qv.addWidget(self.status); qv.addWidget(self.bar); qv.addWidget(self.output,1); qv.addWidget(self.open); tabs.addTab(q,"گزارش اجرا"); v.addWidget(tabs); self.setCentralWidget(w); self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
@@ -269,6 +306,36 @@ class Window(QMainWindow):
    self.model.setEditable(True)
    self.model.setCurrentText(os.environ.get("SHZ_LLM_MODEL",self.model.currentText()))
    self.plot.setEnabled(True)
+ def show_literature_tab(self):
+  self.tabs.setCurrentIndex(1)
+ def search_literature(self):
+  query=self.literature_query.text().strip()
+  if not query:
+   QMessageBox.information(self,"موضوع جستجو","ابتدا موضوع یا کلیدواژه مقاله را وارد کنید."); return
+  sources=[key for key,check in self.literature_sources.items() if check.isChecked()]
+  if not sources:
+   QMessageBox.information(self,"انتخاب منبع","حداقل یک پایگاه علمی را انتخاب کنید."); return
+  cutoff=self.literature_cutoff.text().strip() or None
+  self.literature_results.clear()
+  self.literature_search_button.setEnabled(False)
+  self.literature_status.setText("در حال جستجو در پایگاه‌های انتخاب‌شده…")
+  self.literature_worker=LiteratureSearchWorker(query,cutoff,sources,20)
+  self.literature_worker.results_ready.connect(self.on_literature_results)
+  self.literature_worker.start()
+ def on_literature_results(self,results,error):
+  self.literature_search_button.setEnabled(True)
+  if error:
+   self.literature_status.setText(error); return
+  for paper in results:
+   sources=", ".join(paper.get("sources",[]))
+   item=QListWidgetItem(f"{paper.get('year','')} | {paper.get('title','')}  [{sources}]")
+   item.setData(Qt.ItemDataRole.UserRole,paper.get("url",""))
+   item.setToolTip(paper.get("reason",""))
+   self.literature_results.addItem(item)
+  self.literature_status.setText(f"{len(results)} نتیجه پیدا شد. نتایج تکراری بین پایگاه‌ها ادغام شده‌اند.")
+ def open_literature_result(self,item):
+  url=item.data(Qt.ItemDataRole.UserRole)
+  if url: QDesktopServices.openUrl(QUrl(url))
  def templates(self):
   p=os.path.join(root_dir(),"templates")
   return sorted(x for x in os.listdir(p) if os.path.isfile(os.path.join(p,x,"template.tex"))) if os.path.isdir(p) else ["cvpr2025","iclr2025"]
