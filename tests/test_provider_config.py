@@ -52,6 +52,32 @@ class ProviderConfigTests(unittest.TestCase):
             self.assertFalse(valid)
             self.assertIn("کلید API حساب خودتان", message)
 
+    def test_free_mode_allows_only_openrouter_free_models(self):
+        env = {
+            "SHZ_FREE_MODE": "true",
+            "SHZ_LLM_PROVIDER": "openrouter",
+            "SHZ_LLM_MODEL": "openrouter/free",
+            "OPENROUTER_API_KEY": "test-token",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            self.assertTrue(validate_provider_config()[0])
+            os.environ["SHZ_LLM_MODEL"] = "openai/gpt-4o"
+            valid, message = validate_provider_config()
+            self.assertFalse(valid)
+            self.assertIn("فقط مدل‌های رایگان", message)
+
+    def test_free_mode_rejects_paid_providers(self):
+        env = {
+            "SHZ_FREE_MODE": "true",
+            "SHZ_LLM_PROVIDER": "openai",
+            "SHZ_LLM_MODEL": "gpt-4o",
+            "OPENAI_API_KEY": "test-token",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            valid, message = validate_provider_config()
+            self.assertFalse(valid)
+            self.assertIn("فقط به OpenRouter Free", message)
+
     def test_custom_key_is_not_reused_for_another_hosted_provider(self):
         env = {"SHZ_LLM_PROVIDER": "groq", "SHZ_LLM_API_KEY": "custom-key"}
         with patch.dict(os.environ, env, clear=True):
