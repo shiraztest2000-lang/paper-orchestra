@@ -243,12 +243,10 @@ class Window(QMainWindow):
   for k,val in os.environ.items():pe.insert(k,val)
   pe.insert("SHZ_PAPERORCHESTRA_LOG",self.log_path); self.proc=QProcess(self); self.proc.setProgram(sys.executable);
   if not getattr(sys,"frozen",False): args.insert(0,os.path.abspath(__file__))
-  self.proc.setArguments(args); self.proc.setWorkingDirectory(root_dir()); self.proc.setProcessEnvironment(pe); self.proc.finished.connect(self.finished); self.proc.errorOccurred.connect(self.process_error); self.proc.start()
+  self.proc.setArguments(args); self.proc.setWorkingDirectory(root_dir()); self.proc.setProcessEnvironment(pe); self.proc.started.connect(self.process_started); self.proc.finished.connect(self.finished); self.proc.errorOccurred.connect(self.process_error)
   self.status.setText("در حال راه‌اندازی موتور پژوهش…"); self.bar.setRange(0,5); self.bar.setValue(0)
   self.output.appendPlainText("درخواست تولید ثبت شد؛ در حال راه‌اندازی فرایند مستقل پژوهش…"); self.tabs.setCurrentIndex(1)
-  if not self.proc.waitForStarted(10000):
-   detail=self.proc.errorString(); self.status.setText("اجرای موتور شروع نشد"); self.output.appendPlainText("خطای راه‌اندازی: "+detail); QMessageBox.critical(self,"خطای اجرا","موتور پژوهش شروع نشد.\n"+detail); self.proc=None; self.go.setEnabled(True); self.stop.setEnabled(False); return
-  self.go.setEnabled(False); self.stop.setEnabled(True); self.timer.start(); self.status.setText("موتور اجرا شد؛ در انتظار شروع مرحله اول…"); self.bar.setValue(1)
+  self.go.setEnabled(False); self.stop.setEnabled(True); self.timer.start(); self.proc.start()
  def poll(self):
   if not self.log_path:return
   if not os.path.isfile(self.log_path):
@@ -260,9 +258,13 @@ class Window(QMainWindow):
    stages=[("SHZ_PROGRESS:OUTLINE",1,"عامل طراحی ساختار مقاله"),("SHZ_PROGRESS:LITERATURE",2,"عامل جست‌وجو و مرور منابع"),("SHZ_PROGRESS:PLOTTING",3,"عامل تولید شکل‌ها و نمودارها"),("SHZ_PROGRESS:WRITING",4,"عامل نگارش بخش‌های مقاله"),("SHZ_PROGRESS:REFINEMENT",5,"عامل بازبینی و آماده‌سازی خروجی")]
    for mark,n,label in stages:
     if mark in chunk:self.bar.setValue(max(n,self.bar.value())); self.status.setText(label)
+ def process_started(self):
+  self.status.setText("موتور اجرا شد؛ در انتظار شروع مرحله اول…"); self.bar.setValue(1)
  def process_error(self,error):
   if self.proc:
    detail=self.proc.errorString(); self.status.setText("خطا در اجرای موتور"); self.output.appendPlainText("خطای فرایند: "+detail)
+   if error==QProcess.ProcessError.FailedToStart:
+    self.timer.stop(); self.go.setEnabled(True); self.stop.setEnabled(False); self.proc=None
  def finished(self,code,status):
   self.timer.stop(); self.poll(); self.go.setEnabled(True); self.stop.setEnabled(False); self.open.setEnabled(bool(self.run_dir and os.path.isdir(self.run_dir)))
   if code==0:
