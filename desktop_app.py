@@ -98,7 +98,7 @@ class Settings(QDialog):
   self._load_current(); self.apply_mode(); self.show_step(0)
  def apply_mode(self,*args):
   current=self.provider.currentData()
-  if current and current!="openrouter": self._last_provider=current
+  if current and (current!="openrouter" or not hasattr(self,"_last_provider")): self._last_provider=current
   no_account=self.no_account_mode.isChecked()
   free=self.free_mode.isChecked()
   allowed={"openrouter"} if free else set(self.PROVIDERS)
@@ -112,6 +112,7 @@ class Settings(QDialog):
   self.free_note.setVisible(free)
   self.model.setEditable(not free)
   self.provider_changed()
+  if free:self.model.setCurrentIndex(0)
   self.update_buttons()
  def _load_current(self):
   provider=self.provider.currentData(); item=self.PROVIDERS.get(provider,self.PROVIDERS["gemini"])
