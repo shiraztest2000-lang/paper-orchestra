@@ -51,12 +51,12 @@ def main():
     )
     parser.add_argument(
         "--writer_model_name",
-        default="gemini-3.1-pro-preview",
+        default="gemini-2.5-flash-lite-lite",
         help="LLM for writer and literature agents.",
     )
     parser.add_argument(
         "--reflection_model_name",
-        default="gemini-3.1-pro-preview",
+        default="gemini-2.5-flash-lite-lite",
         help="LLM for reflection agents.",
     )
     parser.add_argument(
@@ -72,7 +72,7 @@ def main():
     )
     parser.add_argument(
         "--plotting_model_name",
-        default="gemini-3.1-pro-preview",
+        default="gemini-2.5-flash-lite-lite",
         help="LLM for the plotting agent.",
     )
     parser.add_argument(
